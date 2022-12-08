@@ -1,0 +1,1 @@
+{"version":3,"file":"products.api.controller.js","sourceRoot":"","sources":["../../../src/controller/api/products.api.controller.ts"],"names":[],"mappings":";;;;;;;;;;;;AAEA,MAAM,WAAW,GAAG,CAAO,GAAY,EAAE,GAAa,EAAE,EAAE;IACtD,MAAM,QAAQ,GAAG,MAAM,KAAK,CAAC,gCAAgC,CAAC,CAAC;IAC/D,MAAM,IAAI,GAAG,MAAM,QAAQ,CAAC,IAAI,EAAE,CAAC;AAEvC,CAAC,CAAA,CAAC;AAEO,kCAAW"}

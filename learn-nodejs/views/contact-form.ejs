@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <!-- Jquery cdn -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.1/jquery.min.js"
+        integrity="sha512-aVKKRRi/Q/YV+4mjoKBsE4x3H+BkegoM/em46NNlCqNTmUYADjBbeNefNxYV7giUp0VxICtqdrbqU7iVaeZNXA==" crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
+    <!-- jquery validation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"
+        integrity="sha512-rstIgDs0xPgmG6RX1Aba4KV5cWJbAMcvRCVmglpam9SoHZiUCyQVDdH2LPlxoHtrv17XWblE/V/PP+Tr04hbtA==" crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <!-- MDB -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.0.1/mdb.min.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div class="container">
+        <%- include('./partials/header.ejs') %>
+            <main>
+                <div class="row">
+                    <div class="col-md-3">
+                        <%- include('./partials/aside.ejs') %>
+                    </div>
+                    <div class="col-md-9">
+                        <form action="/contact" method="POST" id="myform" class="mb-4">
+                            <!-- Fullname input -->
+                            <div class="form-outline mb-4">
+                                <input type="text" id="" class="form-control" name="fullname" />
+                                <label class="form-label" for="">Fullname</label>
+                            </div>
+                            <!-- Age input -->
+                            <div class="form-outline mb-4">
+                                <input type="number" id="" class="form-control" name="age" />
+                                <label class="form-label" for="">Age</label>
+                            </div>
+
+                            <!-- Phone input -->
+                            <div class="form-outline mb-4">
+                                <input type="tel" id="" class="form-control" name="phone" />
+                                <label class="form-label" for="">Phone</label>
+                            </div>
+
+                            <!-- Email input -->
+                            <div class="form-outline mb-4">
+                                <input type="email" id="" class="form-control" name="email" />
+                                <label class="form-label" for="">Email</label>
+                            </div>
+
+                            <!-- Password input -->
+                            <div class="form-outline mb-4">
+                                <input type="password" id="password" class="form-control" name="password" />
+                                <label class="form-label" for="">Password</label>
+                            </div>
+
+                            <!-- Retype Password input -->
+                            <div class="form-outline mb-4">
+                                <input type="password" id="retype_password" class="form-control" name="retype_password" />
+                                <label class="form-label" for="">Retype Password</label>
+                            </div>
+                            <!-- Submit button -->
+                            <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Submit</button>
+                        </form>
+                    </div>
+                </div>
+            </main>
+            <%- include('./partials/footer.ejs') %>
+    </div>
+
+    <!-- MDB -->
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.0.1/mdb.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            $.validator.addMethod("equalTo20", function (value, element) {
+                return this.optional(element) || (parseInt(value) == 20);
+            }, "Amount must be equal to 20");
+
+            $.validator.addMethod('isValidVietnamPhone', function (value, element) {
+                return /(03|05|07|08|09|01[2|6|8|9])+([0-9]{8})\b/.test(value);
+            }, "Phone must be a valid Vietnam phone number");
+
+            $('#myform').validate({
+                rules: {
+                    "fullname": {
+                        required: true,
+                        maxlength: 15
+                    },
+                    "age": {
+                        equalTo20: true
+                    },
+                    "phone": {
+                        required: true,
+                        isValidVietnamPhone: true,
+                    },
+                    "email": {
+                        required: true,
+                    },
+                    "password": {
+                        required: true,
+                        minlength: 8
+                    },
+                    "retype_password": {
+                        equalTo: '#password',
+                        minlength: 8
+                    },
+                },
+            });
+
+            $(document).on('submit', '#myform', function () {
+                if ($(this).valid()) {
+                    alert('The form is valid');
+                } else {
+                    $(this);
+                    alert('Invalid form');
+                }
+            });
+        })
+    </script>
+</body>
+
+</html>

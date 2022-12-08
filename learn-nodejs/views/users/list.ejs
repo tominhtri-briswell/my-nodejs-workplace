@@ -1,0 +1,18 @@
+<div class="row row-cols-md-4 mb-4">
+    <% usersList.users.forEach(user=> { %>
+        <div class="col-md-3 col-sm-12 mb-4">
+            <div class="card">
+                <img src="<%= user.image %>" class="card-img-top w-100" alt="Fissure in Sandstone" width="100" height="150" />
+                <div class="card-body" style="min-height: 200px;">
+                    <h5 class="card-title">
+                        <%= user.firstName + ' ' + user.lastName %>
+                    </h5>
+                    <p class="card-text">
+                        <p>Age: <%= user.age %></p>
+                        <p>Gender: <%= user.gender %></p>
+                    </p>
+                </div>
+            </div>
+        </div>
+        <%}); %>
+</div>

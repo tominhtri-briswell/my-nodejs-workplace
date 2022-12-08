@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <!-- Jquery cdn -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.1/jquery.min.js"
+        integrity="sha512-aVKKRRi/Q/YV+4mjoKBsE4x3H+BkegoM/em46NNlCqNTmUYADjBbeNefNxYV7giUp0VxICtqdrbqU7iVaeZNXA==" crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <!-- MDB -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.0.1/mdb.min.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div class="container">
+        <%- include('../partials/header.ejs') %>
+            <main>
+                <div class="row">
+                    <div class="col-md-3">
+                        <%- include('../partials/aside.ejs') %>
+                    </div>
+                    <div class="col-md-9">
+                        <div class="mb-4">
+                            <!-- jquery .load() event - START -->
+                            <div class="mb-2" id="appendme">
+                                <h5>Jquery $.load()</h5>
+                                <p id="showtext1"></p>
+                                <button id="btnLoad" class="copyme btn btn-primary">Click me to show .txt content</button>
+                            </div>
+                            <!-- jquery .load() event - END -->
+
+                            <!-- jquery .mouseenter() event - START -->
+                            <div class="mb-2">
+                                <h5>Jquery $.mouseenter()</h5>
+                                <p id="showtext2"></p>
+                                <div id="btnMouseEnter" class="card p-2">Mouse enter me to show message!</div>
+                            </div>
+                            <!-- jquery .mouseenter() event - END -->
+
+                            <!-- jquery .animate() event - START -->
+                            <div class="mb-2">
+                                <div class="mb-2">
+                                    <h5>Jquery $.animate()</h5>
+                                    <div class="mb-4" style="position: relative; padding: 50px;">
+                                        <div id="animationDiv" style="background:#98bf21;height:100px;width:100px;position:absolute; bottom: 2px;"></div>
+                                    </div>
+                                    <div id="btnAnimate" class="btn btn-primary">Click me to start Animation</div>
+                                </div>
+                            </div>
+                            <!-- jquery .animate() event - END -->
+
+                            <hr>
+
+                            <div class="mb-4">
+                                <h5>Jquery $.ajax GET users list</h5>
+                                <!-- jquery populate data here - START -->
+                                <div id="usersListDiv">
+
+                                </div>
+                                <!-- jquery populate data here - END -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <button id="add">add</button>
+                    <div id="list" class="col-md-3">
+                        <button class="btn-alert" data-value="1">Hello</button><button class="btn-alert" data-value="2">Hello</button><button class="btn-alert"
+                            data-value="3">Hello</button><button class="btn-alert" data-value="4">Hello</button><button class="btn-alert"
+                            data-value="5">Hello</button><button class="btn-alert" data-value="6">Hello</button><button class="btn-alert"
+                            data-value="7">Hello</button><button class="btn-alert" data-value="8">Hello</button><button class="btn-alert"
+                            data-value="9">Hello</button><button class="btn-alert" data-value="10">Hello</button>
+                    </div>
+                </div>
+            </main>
+            <%- include('../partials/footer.ejs') %>
+    </div>
+
+    <!-- MDB -->
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.0.1/mdb.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            $(document).on('click', '.copyme', function () {
+                // $('#showtext1').load('/public/txt/mytext.txt', function (response, status, xhr) {
+                //     if (status == 'success') {
+                //         alert('Successfully loaded .txt files');
+                //     }
+                //     if (status == 'error') {
+                //         alert(`Failed loaded .txt files, Error: ${xhr.status} : ${xhr.statusText}`);
+                //     }
+                // });
+                console.log('2' + new Date());
+                $('#appendme').append('<button id="btnLoad" class="copyme btn btn-primary">Click me to show .txt content</button>');
+            });
+
+            $('#btnMouseEnter').on({
+                mouseenter: function () {
+                    $('#showtext2').text('Your mouse entered!');
+                },
+                mouseleave: function () {
+                    $('#showtext2').text('Your mouse leaved!');
+                },
+
+            });
+
+            $('#btnAnimate').click(function () {
+                $('#animationDiv').animate({
+                    right: '250px',
+                    opacity: '0.5',
+                    height: '150px',
+                    width: '150px'
+                });
+            });
+
+            // append html response api from server
+            $.get('/api/users/list.html', function (data, status) {
+                if (status == 'success') {
+                    const htmlResponse = $.parseHTML(data);
+                    $('#usersListDiv').append(htmlResponse);
+                }
+            });
+
+
+        })
+    </script>
+</body>
+
+</html>
