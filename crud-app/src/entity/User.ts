@@ -22,19 +22,19 @@ export class User {
     role!: number;
 
     @Column({ name: "created_at", nullable: true })
-    created_at!: Date | null;
+    created_at!: Date;
 
     @Column({ type: "nvarchar", length: 255, nullable: true })
-    created_by!: string | null;
+    created_by!: string;
 
     @Column({ nullable: true })
-    updated_at!: Date | null;
+    updated_at!: Date;
 
     @Column({ type: "nvarchar", length: 255, nullable: true })
-    updated_by!: string | null;
+    updated_by!: string;
 
     @Column({ nullable: true })
-    deleted_at!: Date | null;
+    deleted_at!: Date;
 
     hashPassword() {
         this.password = bcrypt.hashSync(this.password, 10);

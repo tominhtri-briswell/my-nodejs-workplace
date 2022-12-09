@@ -1,13 +1,12 @@
-import express, { Express, Request, Response, NextFunction } from 'express';
+import express, { Express } from 'express';
 import * as bodyParser from "body-parser";
 import dotenv from 'dotenv';
 import cors from 'cors';
 import { AppDataSource } from "./DataSource";
-import _ from 'lodash';
 import userRouter from './route/UserRouter';
 import indexRouter from './route/IndexRouter';
 import userApiRouter from './route/api/UserApiRouter';
-import checkNotFoundError from './middlewares/check404';
+import checkInvalidPath from './middlewares/checkInvalidPath';
 import checkInteralServerError from './middlewares/checkError';
 dotenv.config();
 const PORT = process.env.PORT;
@@ -26,9 +25,9 @@ AppDataSource.initialize().then(async () => {
     app.use('/users', userRouter);
     // api router
     app.use('/api/users', userApiRouter);
-    // middlewares
+    // application-level middlewares
     // error handler middleware
-    app.use(checkNotFoundError);
+    app.use(checkInvalidPath);
     app.use(checkInteralServerError);
     // start express server
     app.listen(PORT);

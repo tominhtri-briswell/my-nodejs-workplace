@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 
-const checkNotFoundError = (req: Request, res: Response, next: NextFunction) => {
+const checkInvalidPath = (req: Request, res: Response, next: NextFunction) => {
     const error = new Error("Not found");
     next({
         ...error,
@@ -8,4 +8,4 @@ const checkNotFoundError = (req: Request, res: Response, next: NextFunction) => 
     });
 };
 
-export default checkNotFoundError;
+export default checkInvalidPath;

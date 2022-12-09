@@ -1,53 +1,64 @@
+import { query, Request, Response } from 'express';
 import { AppDataSource } from '../../DataSource';
-import { NextFunction, Request, Response } from "express";
-import { User } from "../../entity/User";
+import { User } from '../../entity/User';
 
-export class UserApiController {
-
+class UserApiController {
     private userRepository = AppDataSource.getRepository(User);
 
-    async all(request: Request, response: Response, next: NextFunction) {
-        return this.userRepository.find();
+    constructor() {
+        this.getAll = this.getAll.bind(this);
+        this.getOne = this.getOne.bind(this);
+        this.save = this.save.bind(this);
+        this.remove = this.remove.bind(this);
     }
 
-    async one(request: Request, response: Response, next: NextFunction) {
-        const id = parseInt(request.params.id);
+    async getAll(req: Request, res: Response) {
+        const data = await this.userRepository.find();
+        return res.status(200).json(data);
+    }
 
-
-        const user = await this.userRepository.findOne({
-            where: { id }
-        });
-
+    async getOne(req: Request, res: Response) {
+        const id = parseInt(req.params.id);
+        const user = await this.userRepository.findOneBy({ id: id });
         if (!user) {
-            return "unregistered user";
+            return res.status(404).json({ message: `User ID ${id} Not Found!` });
         }
-        return user;
+        return res.status(200).json(user);
     }
 
-    async save(request: Request, response: Response, next: NextFunction) {
-        const { firstName, lastName, age } = request.body;
-
-        const user = Object.assign(new User(), {
-            firstName,
-            lastName,
-            age
+    async save(req: Request, res: Response) {
+        // create query runner
+        const queryRunner = AppDataSource.createQueryRunner();
+        await queryRunner.connect();
+        const { name, username, password, email, role } = req.body;
+        const user: User = Object.assign(new User(), {
+            name, username, password, email, role
         });
+        console.log(user.username);
 
-        return this.userRepository.save(user);
-    }
-
-    async remove(request: Request, response: Response, next: NextFunction) {
-        const id = parseInt(request.params.id);
-
-        const userToRemove = await this.userRepository.findOneBy({ id });
-
-        if (!userToRemove) {
-            return "this user not exist";
+        // start transaction
+        await queryRunner.startTransaction();
+        try {
+            const newUser: User = await queryRunner.manager.save(user);
+            await queryRunner.commitTransaction();
+            return res.status(200).json(newUser);
+        } catch (error) {
+            await queryRunner.rollbackTransaction();
+            return res.status(400).json({ error: "error 400: Can't save new user " });
+        } finally {
+            await queryRunner.release();
         }
-
-        await this.userRepository.remove(userToRemove);
-
-        return "user has been removed";
     }
 
+    async remove(req: Request, res: Response) {
+        const id = parseInt(req.params.id);
+        const userToRemove = await this.userRepository.findOneBy({ id });
+        if (!userToRemove) {
+            return res.status(404).json({ message: `User ID ${id} Not Found` });
+        }
+        await this.userRepository.remove(userToRemove);
+        return res.status(200).json({ message: `User removed successfully` });
+    }
 }
+
+export default new UserApiController();

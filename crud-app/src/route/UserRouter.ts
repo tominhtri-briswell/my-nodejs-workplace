@@ -1,16 +1,18 @@
 import express, { Request, Response } from 'express';
 import UserController from '../controller/UserController';
+import checkReqParamsEmpty from '../middlewares/checkReqParamsEmpty';
+import checkReqQueryEmpty from '../middlewares/checkReqQueryEmpty';
 const userRouter = express.Router();
 
-userRouter.get('/index', (req: Request, res: Response) => {
-    res.render('users/index');
-});
-userRouter.get('/new', (req: Request, res: Response) => {
-    res.render('users/new');
-});
-userRouter.get('/edit', (req: Request, res: Response) => {
-    res.render('users/edit');
-});
-userRouter.get('/list', UserController.list);
+// router level middlewares
+userRouter.use('/create', checkReqParamsEmpty);
+userRouter.use('/addPage', checkReqQueryEmpty);
+
+userRouter.get('/index', UserController.index);
+userRouter.get('/addPage', UserController.addPage);
+userRouter.post('/create', UserController.createNewUser);
+userRouter.get('/edit/:id', UserController.editPage);
+userRouter.get('/list', UserController.listPage);
+userRouter.get('/search', UserController.search);
 
 export default userRouter;
