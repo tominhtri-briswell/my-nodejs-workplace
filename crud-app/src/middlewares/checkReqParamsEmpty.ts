@@ -10,7 +10,7 @@ const checkReqParamsEmpty = (req: Request, res: Response, next: NextFunction) =>
         Object.keys(req.body).forEach(key => {
             req.body[key] = req.body[key] === '' ? null : req.body[key];
         });
-        console.log('after', req.body);
+        // console.log('after', req.body);
     }
     next();
 };

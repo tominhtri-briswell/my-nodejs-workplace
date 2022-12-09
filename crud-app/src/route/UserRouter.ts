@@ -5,12 +5,12 @@ import checkReqQueryEmpty from '../middlewares/checkReqQueryEmpty';
 const userRouter = express.Router();
 
 // router level middlewares
-userRouter.use('/create', checkReqParamsEmpty);
+userRouter.use('/addPage', checkReqParamsEmpty);
 userRouter.use('/addPage', checkReqQueryEmpty);
 
 userRouter.get('/index', UserController.index);
 userRouter.get('/addPage', UserController.addPage);
-userRouter.post('/create', UserController.createNewUser);
+userRouter.post('/addPage', UserController.createNewUser);
 userRouter.get('/edit/:id', UserController.editPage);
 userRouter.get('/list', UserController.listPage);
 userRouter.get('/search', UserController.search);

@@ -20,10 +20,11 @@ class UserController {
             // const user: User = Object.assign(new User(), req.query);
             console.log('co query');
         }
-        res.render('users/add');
+        res.render('users/add', { dataBack: {}, error: '' });
     }
     async createNewUser(req: Request, res: Response) {
-        console.log('after middleware', req.body);
+        console.log('after', req.body);
+
         // get body 
         const { name, username, password, email, role } = req.body;
         const user: User = Object.assign(new User(), {
@@ -41,14 +42,11 @@ class UserController {
             return res.redirect('/users/list');
         } catch (error) {
             await queryRunner.rollbackTransaction();
-            // Example: /users/addPage?name=hoho&username=batman&password=1212
-            const queryStr = querystring.stringify(req.body);
-            return res.redirect('/users/addPage?' + queryStr);
+            return res.render('users/add', { dataBack: req.body, error: error.message });
         } finally {
             await queryRunner.release();
         }
     }
-
 
     async editPage(req: Request, res: Response) {
         const response = await fetch(`http://localhost:5000/api/users/${req.params.id}`);

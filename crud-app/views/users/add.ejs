@@ -34,10 +34,11 @@
             </div>
             <div class="">
                 <div class="row">
-                    <form id="addUserForm" method="POST" action="/users/create">
+                    <form id="addUserForm" method="POST" action="/users/addPage">
                         <div class="row mb-4">
                             <div class="col-md-6 col-sm-12">
-                                <input type="text" id="form6Example1" class="form-control" name="name" placeholder="Name" />
+                                <input type="text" id="form6Example1" class="form-control" name="name" placeholder="Name"
+                                    value="<%= dataBack.name ? dataBack.name: '' %> " />
                             </div>
                             <div class="col-md-6 col-sm-12">
                                 <input type="text" id="form6Example2" class="form-control" name="username" placeholder="Username" />
@@ -64,6 +65,7 @@
                         </div>
                         <!-- Submit button -->
                         <button type="submit" class="btn btn-primary btn-block mb-4" id="submitBtn">SUBMIT</button>
+                        <%= error %>
                     </form>
                 </div>
             </div>
