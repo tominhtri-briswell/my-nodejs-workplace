@@ -8,7 +8,7 @@ const userApiRouter = express.Router();
 userApiRouter.get('/', UserApiController.getAll);
 userApiRouter.get('/:id', UserApiController.getOne);
 userApiRouter.post('/', UserApiController.save);
-userApiRouter.put('/:id', UserApiController.save);
+userApiRouter.put('/:id', UserApiController.update);
 userApiRouter.delete('/:id', UserApiController.remove);
 
 export default userApiRouter;

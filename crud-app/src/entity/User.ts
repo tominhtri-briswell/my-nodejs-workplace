@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable, ManyToOne, OneToMany } from "typeorm";
-import bcrypt from "bcrypt";
+import bcrypt from 'bcrypt';
 
 @Entity("users")
 export class User {

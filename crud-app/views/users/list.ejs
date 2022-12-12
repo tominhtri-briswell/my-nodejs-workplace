@@ -27,7 +27,8 @@
                 </div>
             </div>
             <div class="text-center">
-                <form action="/users/search" onkeyup="">
+                <!-- start form -->
+                <form action="/users/search" method="get">
                     <div class="row mb-3">
                         <div class="col-md-6 col-sm-12">
                             <input type="text" class="form-control" name="name" placeholder="Search name...">
@@ -49,7 +50,15 @@
                             </select>
                         </div>
                     </div>
+                    <div class="row mb-3 text-center">
+                        <div class="col">
+                            <button class="btn btn-primary">
+                                Search
+                            </button>
+                        </div>
+                    </div>
                 </form>
+                <!-- end form -->
                 <table class="table align-middle mb-0 bg-white">
                     <thead class="bg-light">
                         <tr>
@@ -80,7 +89,7 @@
                                     <%= user.username %>
                                 </td>
                                 <td>
-                                    <%= user.password %>
+                                    <%= user.password.length> 10? user.password.slice(0,10) + '...': user.password %>
                                 </td>
                                 <td>
                                     <%= user.email %>

@@ -2,6 +2,7 @@ import express, { Express } from 'express';
 import * as bodyParser from "body-parser";
 import dotenv from 'dotenv';
 import cors from 'cors';
+import flash from 'connect-flash';
 import { AppDataSource } from "./DataSource";
 import userRouter from './route/UserRouter';
 import indexRouter from './route/IndexRouter';
@@ -9,7 +10,7 @@ import userApiRouter from './route/api/UserApiRouter';
 import checkInvalidPath from './middlewares/checkInvalidPath';
 import checkInteralServerError from './middlewares/checkError';
 dotenv.config();
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 5000;
 
 AppDataSource.initialize().then(async () => {
     // create express app
@@ -23,7 +24,6 @@ AppDataSource.initialize().then(async () => {
     // register express routes from defined application routes
     app.use('/', indexRouter);
     app.use('/users', userRouter);
-    // api router
     app.use('/api/users', userApiRouter);
     // application-level middlewares
     // error handler middleware
