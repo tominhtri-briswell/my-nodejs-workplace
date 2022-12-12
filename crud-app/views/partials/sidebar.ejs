@@ -1,0 +1,16 @@
+<nav id="sidebarMenu" class="collapse d-lg-block sidebar collapse bg-white">
+    <div class="position-sticky">
+        <div class="list-group list-group-flush mx-3 mt-4">
+            <!-- 1 -->
+            <a href="/" class="list-group-item list-group-item-action py-2 ripple <%= activeTab === 1? 'active':'' %>" aria-current="true">
+                <i class="fas fa-tachometer-alt fa-fw me-3"></i><span>Main dashboard</span>
+            </a>
+            <!-- 2 -->
+            <a href="/users/list" class="list-group-item list-group-item-action py-2 ripple <%= activeTab === 2? 'active':'' %>">
+                <i class="fas fa-chart-area fa-fw me-3"></i><span>User List</span>
+            </a>
+            <!-- 3 -->
+            <a href="/users/addPage" class="list-group-item list-group-item-action py-2 ripple <%= activeTab === 3? 'active':'' %>  "><i class="fas fa-lock fa-fw me-3"></i><span>Add user</span></a>
+        </div>
+    </div>
+</nav>

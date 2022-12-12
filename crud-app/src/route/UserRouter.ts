@@ -17,6 +17,8 @@ userRouter.post('/addPage', UserController.createNewUser);
 userRouter.get('/edit/:id', UserController.editPage);
 userRouter.post('/update', UserController.update);
 userRouter.get('/list', UserController.listPage);
+userRouter.get('/change-password/:id', UserController.changePasswordPage);
+userRouter.post('/change-password', UserController.changePassword);
 userRouter.get('/search', UserController.search);
 
 export default userRouter;

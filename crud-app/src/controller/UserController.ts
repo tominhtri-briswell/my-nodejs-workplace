@@ -17,6 +17,8 @@ class UserController {
         this.listPage = this.listPage.bind(this);
         this.editPage = this.editPage.bind(this);
         this.search = this.search.bind(this);
+        this.changePassword = this.changePassword.bind(this);
+        this.changePasswordPage = this.changePasswordPage.bind(this);
         this.update = this.update.bind(this);
     }
     async index(req: Request, res: Response) {
@@ -24,12 +26,6 @@ class UserController {
     }
 
     async addPage(req: Request, res: Response) {
-        if (_.isEmpty(req.query) === false) {
-            // console.log(req.query);
-            // console.log(querystring.parse(req.url));
-            // const user: User = Object.assign(new User(), req.query);
-            console.log('co query');
-        }
         res.render('users/add', { dataBack: {}, error: '' });
     }
     async createNewUser(req: Request, res: Response) {
@@ -72,43 +68,59 @@ class UserController {
             res.redirect('/users/list');
         }
         const data = await response.json();
-        res.render('users/edit', { dataBack: req.body, error: {}, user: data });
+        res.render('users/edit', { dataBack: {}, error: {}, user: data });
     }
     async update(req: Request, res: Response) {
         const { id, name, username, email, role } = req.body;
         const response = await axios.put(`http://localhost:5000/api/users/${id}`, { name, username, email, role });
         if (response.status === 200) {
             console.log('Update successfully!');
+            res.redirect('/users/list');
+        } else {
+            res.redirect(`/users/edit/${id}`);
         }
-        res.redirect('/users/list');
     }
 
     async listPage(req: Request, res: Response) {
         const response = await fetch('http://localhost:5000/api/users');
         const data: User = await response.json();
-        res.render('users/list', { userList: data, dayjs: dayjs });
+        res.render('users/list', { userList: data, queryBack: {}, dayjs: dayjs });
+    }
+
+    async changePassword(req: Request, res: Response) {
+        const { id, password } = req.body;
+        console.log(password);
+        const response = await axios.put(`http://localhost:5000/api/users/${id}`, { password });
+        if (response.status === 200) {
+            console.log('Update password successfully!');
+        }
+        res.redirect(`/users/edit/${id}`);
+    }
+    async changePasswordPage(req: Request, res: Response) {
+        const id = req.params.id;
+        res.render('users/change-password', { userId: id });
     }
 
     async search(req: Request, res: Response) {
+        // get req params then map to User
         const { name, username, email, role } = req.query;
-        console.log(req.query);
-
-        const user: User = Object.assign(new User(), { name, username, email, role });
-        // const findUsers = await this.userRepository.createQueryBuilder('user')
-        //     .select('user')
-        //     .where("user.name LIKE :name OR user.username LIKE :username OR user.email LIKE :email OR user.role LIKE :role",
-        //         {
-        //             name: user.name,
-        //             username: user.username,
-        //             email: user.email,
-        //             role: user.role
-        //         })
-        //     .getMany();
-        // console.log(user);
-
-        const findUsers = await this.userRepository.findBy({ name: user.name });
-        console.log(findUsers);
-        res.render('users/list', { userList: findUsers, dayjs: dayjs });
+        // create query builder
+        const builder = this.userRepository.createQueryBuilder('user').where('');
+        // check if queries exist then concat them with sql query
+        if (!_.isNil(name)) {
+            builder.andWhere('user.name LIKE :name', { name: `%${name}%` });
+        }
+        if (!_.isNil(username)) {
+            builder.andWhere('user.username LIKE :username', { username: `%${username}%` });
+        }
+        if (!_.isNil(email)) {
+            builder.andWhere('user.email LIKE :email', { email: `%${email}%` });
+        }
+        if (!_.isNil(role)) {
+            builder.andWhere('user.role = :role', { role: role });
+        }
+        const result = await builder.getMany();
+        res.render('users/list', { userList: result, queryBack: req.query, dayjs: dayjs });
     }
 }
 

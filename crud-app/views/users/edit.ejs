@@ -12,7 +12,84 @@
     <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
     <!-- MDB -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.0.1/mdb.min.css" rel="stylesheet" />
-    <!-- Jquery cdn -->
+    <!-- Custom styles -->
+    <link rel="stylesheet" href="/public/css/admin.css" />
+</head>
+
+<body>
+    <!--Main Navigation START -->
+    <header>
+        <!-- Sidebar START -->
+        <%- include('../partials/sidebar.ejs', {activeTab: 3}) %>
+            <!-- Sidebar END -->
+
+            <!-- Navbar -->
+            <%- include('../partials/navbar.ejs') %>
+                <!-- Navbar -->
+    </header>
+    <!--Main Navigation END-->
+
+    <!--Main dashboard layout-->
+    <main style="margin-top: 58px">
+        <div class="container pt-4">
+            <section class="mb-4">
+                <div class="card">
+                    <div class="card-header py-3">
+                        <h5 class="mb-0 text-center"><strong>EDIT USER</strong></h5>
+                    </div>
+                </div>
+                <!-- <div class="card-footer d-flex mb-3 justify-content-center">
+                    <div class="btn-group">
+                        <a href="/admin/users/export-pdf" class="btn btn-secondary">PDF</a>
+                        <a href="/admin/users/export-excel" class="btn btn-secondary">EXCEL</a>
+                        <a href="/admin/users/export-csv" class="btn btn-secondary">CSV</a>
+                    </div>
+                </div> -->
+            </section>
+
+            <div class="container">
+                <form id="editUserForm" method="POST" action="/users/update">
+                    <div class="row mb-4">
+                        <input type="text" id="" class="form-control" name="id" placeholder="ID" value="<%= user.id ? user.id: '' %> " hidden />
+                        <div class="col-md-6 col-sm-12">
+                            <label for="">Name:</label>
+                            <input type="text" id="" class="form-control" name="name" placeholder="Name" value="<%= user.name ? user.name: '' %> " />
+                        </div>
+                        <div class="col-md-6 col-sm-12">
+                            <label for="">Username:</label>
+                            <input type="text" id="" class="form-control" name="username" placeholder="Username"
+                                value="<%= user.username ? user.username: '' %> " />
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="">Email:</label>
+                        <input type="email" id="email" class="form-control" name="email" placeholder="Email" value="<%= user.email ? user.email: '' %> " />
+                    </div>
+                    <div class="mb-4">
+                        <label for="selectRole">Role: </label>
+                        <select name="role" class="" id="selectRole">
+                            <option value="1" <%=user.role===1? 'selected' :'' %> >1 - User</option>
+                            <option value="2" <%=user.role===2? 'selected' :'' %> >2 - Admin</option>
+                            <option value="3" <%=user.role===3? 'selected' :'' %> >3 - Manager</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <a href="/users/change-password/<%= user.id %> ">Change password?</a>
+                    </div>
+                    <!-- Submit button -->
+                    <button type="submit" class="btn btn-primary btn-block mb-4" id="submitBtn">UPDATE</button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+
+    <!-- MDB -->
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.0.1/mdb.min.js"></script>
+    <!-- chartjs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"
+        integrity="sha512-d9xgZrVZpmmQlfonhQUvTR7lMPtO7NkZMkA0ABN3PHCbKA5nqylQ/yWlFAyY6hYgdF1Qh6nYiuADWwKB4C2WSw==" crossorigin="anonymous"></script>
+    <!-- jquery -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.1/jquery.min.js"
         integrity="sha512-aVKKRRi/Q/YV+4mjoKBsE4x3H+BkegoM/em46NNlCqNTmUYADjBbeNefNxYV7giUp0VxICtqdrbqU7iVaeZNXA==" crossorigin="anonymous"
         referrerpolicy="no-referrer"></script>
@@ -20,66 +97,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"
         integrity="sha512-rstIgDs0xPgmG6RX1Aba4KV5cWJbAMcvRCVmglpam9SoHZiUCyQVDdH2LPlxoHtrv17XWblE/V/PP+Tr04hbtA==" crossorigin="anonymous"
         referrerpolicy="no-referrer"></script>
-    <!-- custom css -->
-    <link rel="stylesheet" href="/public/css/style.css">
-</head>
-
-<body>
-    <div class="container">
-        <%- include('../partials/header') %>
-            <div class="card my-4">
-                <div class="card-header text-center">
-                    <h3>UPDATE </h3>
-                </div>
-            </div>
-            <div class="">
-                <div class="row">
-                    <form id="editUserForm" method="POST" action="/users/update">
-                        <div class="row mb-4">
-                            <input type="text" id="form6Example1" class="form-control" name="id" placeholder="ID" value="<%= user.id ? user.id: '' %> "
-                                hidden />
-                            <div class="col-md-6 col-sm-12">
-                                <label for="">Name:</label>
-                                <input type="text" id="form6Example1" class="form-control" name="name" placeholder="Name"
-                                    value="<%= user.name ? user.name: '' %> " />
-                            </div>
-                            <div class="col-md-6 col-sm-12">
-                                <label for="">Username:</label>
-                                <input type="text" id="form6Example2" class="form-control" name="username" placeholder="Username"
-                                    value="<%= user.username ? user.username: '' %> " />
-                            </div>
-                        </div>
-                        <!-- <div class="row mb-4">
-                            <div class="col-md-6 col-sm-12">
-                                <input type="password" id="password" class="form-control" name="password" placeholder="Password"
-                                    value="<%= user.password ? user.password: '' %> " />
-                            </div>
-                            <div class="col-md-6 col-sm-12">
-                                <input type="password" id="retype" class="form-control" name="retype" placeholder="Retype" />
-                            </div>
-                        </div> -->
-                        <div class="mb-4">
-                            <label for="">Email:</label>
-                            <input type="email" id="email" class="form-control" name="email" placeholder="Email" value="<%= user.email ? user.email: '' %> " />
-                        </div>
-                        <div class="mb-4">
-                            <label for="selectRole">Role: </label>
-                            <select name="role" class="" id="selectRole">
-                                <option value="1" <%=user.role===1? 'selected' :'' %> >1 - User</option>
-                                <option value="2" <%=user.role===2? 'selected' :'' %> >2 - Admin</option>
-                                <option value="3" <%=user.role===3? 'selected' :'' %> >3 - Manager</option>
-                            </select>
-                        </div>
-                        <!-- Submit button -->
-                        <button type="submit" class="btn btn-primary btn-block mb-4" id="submitBtn">UPDATE</button>
-
-                    </form>
-                </div>
-            </div>
-            <!-- end div -->
-    </div>
-    <!-- MDB -->
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.0.1/mdb.min.js"></script>
+    <!-- Custom scripts -->
+    <script type="text/javascript" src="/public/js/admin.js"></script>
+    <!-- jquery script -->
     <script>
 
 
@@ -111,6 +131,17 @@
             //         }
             //     }
             // });
+
+            $('#changePasswordForm').validate({
+                "password": {
+                    required: true,
+                    minlength: 6
+                },
+                "retype": {
+                    equalTo: "#password",
+                    minlength: 6
+                }
+            });
 
             $(document).on('click', '#submitBtn', function (e) {
                 const formElement = $('#editUserForm');

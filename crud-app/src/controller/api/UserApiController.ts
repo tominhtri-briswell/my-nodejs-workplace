@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
+import _ from 'lodash';
 import { AppDataSource } from '../../DataSource';
 import { User } from '../../entity/User';
+import { hashPassword } from '../../utils/BcryptUtils';
 
 class UserApiController {
     private userRepository = AppDataSource.getRepository(User);
@@ -35,6 +37,16 @@ class UserApiController {
         const user: User = Object.assign(new User(), {
             name, username, password, email, role
         });
+        // check exist email, username
+        const findUser: User | null = await this.userRepository.findOneBy({ name: name, username: username });
+        if (findUser) {
+            return res.redirect('/users/list');
+        }
+
+        user.created_at = new Date();
+        // hash password with bcrypt
+        const hashed = await hashPassword(user.password);
+        user.password = hashed;
         // start transaction
         await queryRunner.startTransaction();
         try {
@@ -60,6 +72,10 @@ class UserApiController {
             id, name, username, password, email, role
         });
         user.updated_at = new Date();
+        if (!_.isNil(password)) {
+            const hashed = await hashPassword(user.password);
+            user.password = hashed;
+        }
         // check if user exist by id
         const findUser: User | null = await this.userRepository.findOneBy({ id: user.id });
         if (!findUser) {
