@@ -19,6 +19,7 @@ declare module 'express-session' {
     interface SessionData {
         user: User;
         username: string;
+        isAuthorized: boolean;
     }
 }
 
@@ -29,6 +30,7 @@ const SESSION_SECRET = process.env.SESSION_SECRET;
 const COOKIE_SECRET = process.env.COOKIE_SECRET;
 
 AppDataSource.initialize().then(async () => {
+
     // create express app
     const app: Express = express();
     app.use(session({
@@ -36,6 +38,7 @@ AppDataSource.initialize().then(async () => {
         resave: true,
         saveUninitialized: true,
     }));
+
     app.use(flash());
     app.use(cors());
     app.use(cookieParser(COOKIE_SECRET));
@@ -46,9 +49,9 @@ AppDataSource.initialize().then(async () => {
     app.set('view engine', 'ejs');
     // register express routes from defined application routes
     app.use('/', indexRouter);
-    app.use('/admin',  adminRouter);
-    app.use('/admin/users',  adminUserRouter);
-    app.use('/api/admin/users',  adminUserApiRouter);
+    app.use('/admin', checkIsLoggedIn, adminRouter);
+    app.use('/admin/users', checkIsLoggedIn, adminUserRouter);
+    app.use('/api/admin/users', checkIsLoggedIn, adminUserApiRouter);
     // error handler middleware
     app.use(checkInvalidPath);
     app.use(checkInteralServerError);

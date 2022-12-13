@@ -26,29 +26,33 @@ class IndexController {
 
     async login(req: Request, res: Response) {
         const { username, password: rawPassword } = req.body;
-        const returnUrlCookie = req.signedCookies['return-url'];
+        const { redirect } = req.query;
+        const returnUrl: string = decodeURIComponent(redirect as string);
+        let isLoginValid = false;
         if (!username || !rawPassword) {
-            res.render('security/login', { message: 'Please enter both username and password' });
+            req.flash('message', 'Please enter both username and password');
+            res.redirect('/login');
+        }
+        const findUser: User = await this.userRepo.findOneBy({ username: username });
+        if (findUser) {
+            const isPassMatch = await comparePassword(rawPassword, findUser.password);
+            if (isPassMatch) {
+                req.session.user = findUser;
+                req.session.isAuthorized = true;
+                isLoginValid = true;
+            }
+        }
+        if (isLoginValid) {
+            res.redirect(returnUrl ?? '/admin');
         } else {
-            const users: User[] = await this.userRepo.find();
-            users.filter(async (user) => {
-                const isPassMatch: boolean = await comparePassword(rawPassword, user.password);
-                if (user.username === username && isPassMatch) {
-                    req.session.user = user;
-                    if (returnUrlCookie) {
-                        res.redirect(returnUrlCookie);
-                    }
-                    res.redirect('/admin');
-                }
-            });
-            res.render('security/login', { message: 'Username or password is incorrect' });
+            req.flash('message', 'Username or password is incorrect');
+            res.redirect('/login');
         }
     }
 
     async logout(req: Request, res: Response) {
-        req.session.destroy(() => {
-            console.log('Logged out!');
-        });
+        req.session.user = null;
+        req.session.isAuthorized = false;
         res.redirect('/');
     }
 }
