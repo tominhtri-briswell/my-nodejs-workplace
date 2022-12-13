@@ -1,12 +1,10 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
+import IndexController from '../controller/IndexController';
 const indexRouter = express.Router();
 
-indexRouter.get('/', (req: Request, res: Response) => {
-    res.render('index');
-});
-
-indexRouter.get('/login', (req: Request, res: Response) => {
-    res.render('security/login');
-});
+indexRouter.get('/', IndexController.indexPage);
+indexRouter.get('/login', IndexController.loginPage);
+indexRouter.post('/login', IndexController.login);
+indexRouter.post('/logout', IndexController.logout);
 
 export default indexRouter;

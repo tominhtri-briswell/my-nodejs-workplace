@@ -3,29 +3,52 @@ import * as bodyParser from "body-parser";
 import dotenv from 'dotenv';
 import cors from 'cors';
 import flash from 'connect-flash';
+import session from 'express-session';
+import cookieParser from 'cookie-parser';
 import { AppDataSource } from "./DataSource";
-import userRouter from './route/UserRouter';
+import adminUserRouter from './route/AdminUserRouter';
 import indexRouter from './route/IndexRouter';
-import userApiRouter from './route/api/UserApiRouter';
+import adminUserApiRouter from './route/api/AdminUserApiRouter';
 import checkInvalidPath from './middlewares/checkInvalidPath';
 import checkInteralServerError from './middlewares/checkError';
+import { User } from './entity/User';
+import checkLogin from './middlewares/checkIsLoggedIn';
+import adminRouter from './route/AdminRouter';
+import checkIsLoggedIn from './middlewares/checkIsLoggedIn';
+declare module 'express-session' {
+    interface SessionData {
+        user: User;
+        username: string;
+    }
+}
+
 dotenv.config();
+// secret variable from .env
 const PORT = process.env.PORT || 5000;
+const SESSION_SECRET = process.env.SESSION_SECRET;
+const COOKIE_SECRET = process.env.COOKIE_SECRET;
 
 AppDataSource.initialize().then(async () => {
     // create express app
     const app: Express = express();
+    app.use(session({
+        secret: SESSION_SECRET,
+        resave: true,
+        saveUninitialized: true,
+    }));
+    app.use(flash());
     app.use(cors());
-    app.use('/public', express.static('./public'));
+    app.use(cookieParser(COOKIE_SECRET));
     app.use(bodyParser.urlencoded({ extended: true }));
     app.use(bodyParser.json());
+    app.use('/public', express.static('./public'));
     app.set('views', './views');
     app.set('view engine', 'ejs');
     // register express routes from defined application routes
     app.use('/', indexRouter);
-    app.use('/users', userRouter);
-    app.use('/api/users', userApiRouter);
-    // application-level middlewares
+    app.use('/admin',  adminRouter);
+    app.use('/admin/users',  adminUserRouter);
+    app.use('/api/admin/users',  adminUserApiRouter);
     // error handler middleware
     app.use(checkInvalidPath);
     app.use(checkInteralServerError);
