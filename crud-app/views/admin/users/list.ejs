@@ -102,10 +102,10 @@
                     </form>
                     <!-- end form -->
                     <div class="table-responsive">
-                        <table class="table">
+                        <table class="table" id="usersTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th class="fw-bold">#</th>
+                                    <th></th>
                                     <th>ID</th>
                                     <th>Name</th>
                                     <th>Username</th>
@@ -120,54 +120,6 @@
                                     <th></th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <% userList.forEach((user, index)=> { %>
-                                <tr>
-                                    <td class="fw-bold">
-                                        <%= ++index %>
-                                    </td>
-                                    <td>
-                                        <%= user.id %>
-                                    </td>
-                                    <td>
-                                        <%= user.name.length> 12? user.name.slice(0,12) + '...': user.name %>
-                                    </td>
-                                    <td>
-                                        <%= user.username.length> 12? user.username.slice(0,12) + '...': user.username %>
-                                    </td>
-                                    <td>
-                                        <%= user.password.length> 12? user.password.slice(0,12) + '...': user.password %>
-                                    </td>
-                                    <td>
-                                        <%= user.email.length> 12? user.email.slice(0,12) + '...': user.email %>
-                                    </td>
-                                    <td>
-                                        <%= user.role %>
-                                    </td>
-                                    <td>
-                                        <%= user.role==1? 'User' : (user.role==2? 'Admin' :'Manager') %>
-                                    </td>
-                                    <td>
-                                        <%= user.created_at? dayjs(user.created_at).format('DD/MM/YYYY HH:mm:ss'): '' %>
-                                    </td>
-                                    <td>
-                                        <%= user.created_by %>
-                                    </td>
-                                    <td>
-                                        <%= user.updated_at? dayjs(user.updated_at).format('DD/MM/YYYY HH:mm:ss'): '' %>
-                                    </td>
-                                    <td>
-                                        <%= user.updated_by || '' %>
-                                    </td>
-                                    <td>
-                                        <div class="btn-group" role="group" aria-label="Basic example">
-                                            <a href="/admin/users/edit/<%= user.id %>" class="btn btn-secondary">Edit</a>
-                                            <a class="btn btn-danger" id="delUserBtn" data-user-id="<%= user.id %>">Del</a>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <% }); %>
-                            </tbody>
                         </table>
                     </div>
                 </div>
@@ -183,8 +135,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js" integrity="sha512-d9xgZrVZpmmQlfonhQUvTR7lMPtO7NkZMkA0ABN3PHCbKA5nqylQ/yWlFAyY6hYgdF1Qh6nYiuADWwKB4C2WSw==" crossorigin="anonymous"></script>
     <!-- jquery -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.1/jquery.min.js" integrity="sha512-aVKKRRi/Q/YV+4mjoKBsE4x3H+BkegoM/em46NNlCqNTmUYADjBbeNefNxYV7giUp0VxICtqdrbqU7iVaeZNXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- datatable css -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.css">
+    <!-- datatable js -->
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.js"></script>
     <!-- Custom scripts -->
-    <script type="text/javascript" src="/public/js/admin.js"></script>
+    <!-- <script type="text/javascript" src="/public/js/admin.js"></script> -->
     <!-- modal id: #errorModal -->
     <%- include('../partials/modal/errorModal.ejs', {message:message}) %>
     <!-- active errorModal if message exist -->
@@ -199,6 +155,60 @@
     <!-- jquery script -->
     <script>
         $(document).ready(function() {
+            let dataTable = $('#usersTable').DataTable({
+                responsive: true,
+                processing: true,
+                serverSide: true,
+                ajax: '/api/admin/users/search',
+                columns: [
+                    {
+                        data: 'id'
+                    },
+                    {
+                        data: 'name'
+                    },
+                    {
+                        data: 'username'
+                    },
+                    {
+                        data: 'password'
+                    },
+                    {
+                        data: 'email'
+                    },
+                    {
+                        data: 'role'
+                    },
+                    {
+                        data: 'role'
+                    },
+                    {
+                        data: 'created_at'
+                    },
+                    {
+                        data: 'created_by'
+                    },
+                    {
+                        data: 'updated_at'
+                    },
+                    {
+                        data: 'updated_by'
+                    },
+                ],
+
+            })
+
+            dataTable().on('draw.dt', function() {
+                var info = table.page.info();
+                table.column(0, {
+                    search: 'applied',
+                    order: 'applied',
+                    page: 'applied'
+                }).nodes().each(function(cell, i) {
+                    cell.innerHTML = i + 1 + info.start;
+                });
+            });
+
             // if click del button then call ajax delete request
             $(document).on('click', '#delUserBtn', function() {
                 const userId = $(this).attr('data-user-id');

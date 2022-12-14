@@ -12,14 +12,13 @@ import adminUserApiRouter from './route/api/AdminUserApiRouter';
 import checkInvalidPath from './middlewares/checkInvalidPath';
 import checkInteralServerError from './middlewares/checkError';
 import { User } from './entity/User';
-import checkLogin from './middlewares/checkIsLoggedIn';
 import adminRouter from './route/AdminRouter';
 import checkIsLoggedIn from './middlewares/checkIsLoggedIn';
 declare module 'express-session' {
     interface SessionData {
         user: User;
         username: string;
-        isAuthorized: boolean;
+        loggedin: boolean;
     }
 }
 
@@ -35,23 +34,24 @@ AppDataSource.initialize().then(async () => {
     const app: Express = express();
     app.use(session({
         secret: SESSION_SECRET,
-        resave: true,
+        resave: false,
         saveUninitialized: true,
     }));
 
-    app.use(flash());
-    app.use(cors());
-    app.use(cookieParser(COOKIE_SECRET));
-    app.use(bodyParser.urlencoded({ extended: true }));
     app.use(bodyParser.json());
+    app.use(bodyParser.urlencoded({ extended: true }));
+    app.use(cookieParser(COOKIE_SECRET));
     app.use('/public', express.static('./public'));
     app.set('views', './views');
     app.set('view engine', 'ejs');
+    app.use(flash());
+    app.use(cors());
     // register express routes from defined application routes
     app.use('/', indexRouter);
-    app.use('/admin', checkIsLoggedIn, adminRouter);
-    app.use('/admin/users', checkIsLoggedIn, adminUserRouter);
-    app.use('/api/admin/users', checkIsLoggedIn, adminUserApiRouter);
+    app.use(checkIsLoggedIn);
+    app.use('/admin', adminRouter);
+    app.use('/admin/users', adminUserRouter);
+    app.use('/api/admin/users', adminUserApiRouter);
     // error handler middleware
     app.use(checkInvalidPath);
     app.use(checkInteralServerError);

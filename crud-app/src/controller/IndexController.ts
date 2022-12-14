@@ -38,12 +38,12 @@ class IndexController {
             const isPassMatch = await comparePassword(rawPassword, findUser.password);
             if (isPassMatch) {
                 req.session.user = findUser;
-                req.session.isAuthorized = true;
+                req.session.loggedin = true;
                 isLoginValid = true;
             }
         }
         if (isLoginValid) {
-            res.redirect(returnUrl ?? '/admin');
+            res.redirect(returnUrl || '/admin');
         } else {
             req.flash('message', 'Username or password is incorrect');
             res.redirect('/login');
@@ -52,7 +52,7 @@ class IndexController {
 
     async logout(req: Request, res: Response) {
         req.session.user = null;
-        req.session.isAuthorized = false;
+        req.session.loggedin = false;
         res.redirect('/');
     }
 }

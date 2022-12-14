@@ -1,0 +1,46 @@
+<% userList.forEach((user, index)=> { %>
+<tr>
+    <td class="fw-bold">
+        <%= ++index %>
+    </td>
+    <td>
+        <%= user.id %>
+    </td>
+    <td>
+        <%= user.name.length> 12? user.name.slice(0,12) + '...': user.name %>
+    </td>
+    <td>
+        <%= user.username.length> 12? user.username.slice(0,12) + '...': user.username %>
+    </td>
+    <td>
+        <%= user.password.length> 12? user.password.slice(0,12) + '...': user.password %>
+    </td>
+    <td>
+        <%= user.email.length> 12? user.email.slice(0,12) + '...': user.email %>
+    </td>
+    <td>
+        <%= user.role %>
+    </td>
+    <td>
+        <%= user.role==1? 'User' : (user.role==2? 'Admin' :'Manager') %>
+    </td>
+    <td>
+        <%= user.created_at? dayjs(user.created_at).format('DD/MM/YYYY HH:mm:ss'): '' %>
+    </td>
+    <td>
+        <%= user.created_by %>
+    </td>
+    <td>
+        <%= user.updated_at? dayjs(user.updated_at).format('DD/MM/YYYY HH:mm:ss'): '' %>
+    </td>
+    <td>
+        <%= user.updated_by || '' %>
+    </td>
+    <td>
+        <div class="btn-group" role="group" aria-label="Basic example">
+            <a href="/admin/users/edit/<%= user.id %>" class="btn btn-secondary">Edit</a>
+            <a class="btn btn-danger" id="delUserBtn" data-user-id="<%= user.id %>">Del</a>
+        </div>
+    </td>
+</tr>
+<% }); %>
