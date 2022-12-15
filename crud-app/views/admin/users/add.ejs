@@ -52,13 +52,11 @@
                     <div class="row mb-4">
                         <div class="col-md-6 col-sm-12">
                             <label for="">Name:</label>
-                            <input type="text" id="form6Example1" class="form-control" name="name" placeholder="Name" <%=dataBack.name? `value=${dataBack.name}
-                                ` : `` %> />
+                            <input type="text" id="form6Example1" class="form-control" name="name" placeholder="Name" <%=dataBack.name?`value=${dataBack.name}` : `` %> />
                         </div>
                         <div class="col-md-6 col-sm-12">
                             <label for="">Username:</label>
-                            <input type="text" id="form6Example2" class="form-control" name="username" placeholder="Username" <%=dataBack.username?
-                                `value=${dataBack.username} ` : `` %> />
+                            <input type="text" id="form6Example2" class="form-control" name="username" placeholder="Username" <%=dataBack.username? `value=${dataBack.username}` : `` %> />
                         </div>
                     </div>
                     <div class="row mb-4">
@@ -73,8 +71,7 @@
                     </div>
                     <div class="mb-4">
                         <label for="">Email:</label>
-                        <input type="email" id="email" class="form-control" name="email" placeholder="Email" <%=dataBack.email? `value=${dataBack.email} ` : ``
-                            %> />
+                        <input type="email" id="email" class="form-control" name="email" placeholder="Email" <%=dataBack.email?`value=${dataBack.email}` : ``%> />
                     </div>
                     <div class="mb-4">
                         <label for="selectRole">Role: </label>
@@ -118,30 +115,36 @@
             $.validator.addMethod('checkValidEmail', function(value, element) {
                 return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(value);
             }, 'Please enter a valid email address please !');
-            $('#addUserForm').validate({
-                rules: {
-                    "name": {
-                        required: true,
-                        maxlength: 20
-                    },
-                    "username": {
-                        required: true,
-                        maxlength: 20
-                    },
-                    "email": {
-                        required: true,
-                        checkValidEmail: true
-                    },
-                    "password": {
-                        required: true,
-                        minlength: 6
-                    },
-                    "retype": {
-                        equalTo: "#password",
-                        minlength: 6
-                    }
-                }
-            });
+            // $('#addUserForm').validate({
+            //     rules: {
+            //         "name": {
+            //             required: true,
+            //             maxlength: 100
+            //         },
+            //         "username": {
+            //             required: true,
+            //             maxlength: 255
+            //         },
+            //         "email": {
+            //             required: true,
+            //             maxlength: 255,
+            //             checkValidEmail: true
+            //         },
+            //         "password": {
+            //             required: true,
+            //             minlength: 6,
+            //             maxlength: 20
+            //         },
+            //         "retype": {
+            //             equalTo: "#password",
+            //             minlength: 6,
+            //             maxlength: 20
+            //         },
+            //         "role": {
+            //             required: true,
+            //         }
+            //     }
+            // });
 
             $(document).on('click', '#submitBtn', function(e) {
                 const formElement = $('#addUserForm');

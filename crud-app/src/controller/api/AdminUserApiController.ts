@@ -2,11 +2,9 @@ import { Request, Response } from 'express';
 import _ from 'lodash';
 import { AppDataSource } from '../../DataSource';
 import { User } from '../../entity/User';
-import { CustomResultData } from '../../type/CustomResultData';
-import { DataTableResultData } from '../../type/DataTableResultData';
+import { CustomApiResult, CustomDataTableResult, CustomValidateResult } from '../../type/MyCustomType';
 import { hashPassword } from '../../utils/BcryptUtils';
-
-
+import { isValidDate } from '../../utils/MyUtils';
 
 class AdminUserApiController {
     private userRepository = AppDataSource.getRepository(User);
@@ -23,7 +21,7 @@ class AdminUserApiController {
     //for routing control purposes - START
     async getAll(req: Request, res: Response) {
         const { take, limit } = req.query;
-        const result: CustomResultData = await this.getAllData(take as string, limit as string);
+        const result: CustomApiResult = await this.getAllData(take as string, limit as string);
         // eslint-disable-next-line prefer-const
         return res.status(result.status).json(result);
     }
@@ -59,7 +57,7 @@ class AdminUserApiController {
     //for routing control purposes - END
 
     // for process data purposes, self-calling in the application - START
-    async getAllData(take?: string, limit?: string): Promise<CustomResultData> {
+    async getAllData(take?: string, limit?: string): Promise<CustomApiResult> {
         const builder = this.userRepository.createQueryBuilder('user').select('user');
         let users: User[];
         try {
@@ -87,7 +85,7 @@ class AdminUserApiController {
         return { data: users, status: 200 };
     }
 
-    async getOneData(id: number): Promise<CustomResultData> {
+    async getOneData(id: number): Promise<CustomApiResult> {
         const findUser: User | null = await this.userRepository.findOneBy({ id: id });
         if (!findUser) {
             return { message: `User ID ${id} Not Found!`, status: 404 };
@@ -95,22 +93,68 @@ class AdminUserApiController {
         return { message: `Found user with id ${id}`, data: findUser, status: 200 };
     }
 
-    async saveData(user: User): Promise<CustomResultData> {
-        // create query builder to check exist email, username
+    async validateUser(user: User): Promise<CustomValidateResult> {
         const builder = this.userRepository.createQueryBuilder('user').where('');
+        let message: string;
+        let isValid: boolean;
+        const result = {
+            message: message,
+            isValid: isValid,
+        };
+
+        if (_.isNil(user.name)) {
+            result.message = 'Name is required';
+            result.isValid = false;
+            return;
+        }
+        if (_.isNil(user.username)) {
+            result.message = 'Username is required';
+            result.isValid = false;
+            return result;
+        }
+        if (_.isNil(user.password)) {
+            result.message = 'Password is required';
+            result.isValid = false;
+            return result;
+        }
+        if (_.isNil(user.email)) {
+            result.message = 'Email is required';
+            result.isValid = false;
+            return result;
+        }
+        if (_.isNil(user.role)) {
+            result.message = 'Role is required';
+            result.isValid = false;
+            return result;
+        }
         if (user.username) {
             builder.orWhere('user.username = :username', { username: `${user.username}` });
-            const result = await builder.getMany();
-            if (result.length > 0) {
-                return { message: "Username is already exist!", status: 400 };
+            const list = await builder.getMany();
+            if (list.length > 0) {
+                result.message = 'Username is already exist!';
+                result.isValid = false;
+                return result;
             }
         }
         if (user.email) {
             builder.orWhere('user.email = :email', { email: `${user.email}` });
-            const result = await builder.getMany();
-            if (result.length > 0) {
-                return { message: "Email is already exist!", status: 400 };
+            const list = await builder.getMany();
+            if (list.length > 0) {
+                result.message = 'Email is already exist!';
+                result.isValid = false;
+                return result;
             }
+        }
+
+        return { message: 'All input is valid!', isValid: true };
+
+    }
+
+    async saveData(user: User): Promise<CustomApiResult> {
+        // check all input is null and is already exist(middleware already convert '' to null)
+        const validateUser = await this.validateUser(user);
+        if (!validateUser.isValid) {
+            return { message: validateUser.message, status: 400 };
         }
         user.created_at = new Date();
         // hash password with bcrypt
@@ -131,7 +175,7 @@ class AdminUserApiController {
             await queryRunner.release();
         }
     }
-    async updateData(user: User): Promise<CustomResultData> {
+    async updateData(user: User): Promise<CustomApiResult> {
         // create query runner
         const queryRunner = AppDataSource.createQueryRunner();
         await queryRunner.connect();
@@ -161,7 +205,7 @@ class AdminUserApiController {
         }
     }
 
-    async removeData(id: number): Promise<CustomResultData> {
+    async removeData(id: number): Promise<CustomApiResult> {
         const userToRemove: User | null = await this.userRepository.findOneBy({ id });
         if (!userToRemove) {
             return { message: `User ID ${id} Not Found`, status: 404 };
@@ -169,33 +213,49 @@ class AdminUserApiController {
         await this.userRepository.remove(userToRemove);
         return { message: `User removed successfully`, status: 200 };
     }
-    async searchData(query: Record<string, unknown>): Promise<DataTableResultData> {
-        const { draw, length, start, name, username, email, role } = query;
-
+    async searchData(query: Record<string, unknown>): Promise<CustomDataTableResult> {
+        const { draw, length, start, name, username, email, role, createdDateFrom, createdDateTo } = query;
         const builder = this.userRepository.createQueryBuilder('user').where('');
-        // check if queries exist then concat them with sql query
-        if (!_.isNil(length)) {
-            builder.limit(parseInt(length as string));
-        }
-        if (!_.isNil(start) && !_.isNil(length)) {
-            builder.offset(parseInt(start as string));
-        }
-        if (!_.isNil(name)) {
-            builder.andWhere('user.name LIKE :name', { name: `%${name}%` });
-        }
-        if (!_.isNil(username)) {
-            builder.andWhere('user.username LIKE :username', { username: `%${username}%` });
-        }
-        if (!_.isNil(email)) {
-            builder.andWhere('user.email LIKE :email', { email: `%${email}%` });
-        }
-        if (!_.isNil(role)) {
-            builder.andWhere('user.role IN (:role)', { role: role });
-        }
-        const data: string | User[] = await builder.getMany(); //get data 
+
+        let data: string | User[];
         const recordsTotal: number = await this.userRepository.createQueryBuilder('user').select('user').getCount(); // get total records count
         const recordsFiltered: number = recordsTotal; // get filterd records count
-        
+
+        try {
+            // let isFromAndToDateEqual = false;
+            // check if queries exist then concat them with sql query
+            if (!_.isNil(length)) {
+                builder.limit(parseInt(length as string));
+            }
+            // check both start end length for error: typeorm RDBMS does not support OFFSET without LIMIT in SELECT statements
+            if (!_.isNil(start) && !_.isNil(length)) {
+                builder.offset(parseInt(start as string));
+            }
+            if (!_.isNil(createdDateFrom) && isValidDate(new Date(createdDateFrom as string))) {
+                builder.andWhere('Date(user.created_at) >= :fromDate', { fromDate: `${createdDateFrom}` });
+            }
+            if (!_.isNil(createdDateTo) && isValidDate(new Date(createdDateTo as string))) {
+                builder.andWhere('Date(user.created_at) <= :toDate', { toDate: `${createdDateTo}` });
+            }
+            if (!_.isNil(name)) {
+                builder.andWhere('user.name LIKE :name', { name: `%${name}%` });
+            }
+            if (!_.isNil(username)) {
+                builder.andWhere('user.username LIKE :username', { username: `%${username}%` });
+            }
+            if (!_.isNil(email)) {
+                builder.andWhere('user.email LIKE :email', { email: `%${email}%` });
+            }
+            if (!_.isNil(role)) {
+                builder.andWhere('user.role IN (:role)', { role: role });
+            }
+            data = await builder.getMany(); //get data 
+        } catch (error) {
+            // if error then find all
+            console.log(error);
+            data = await this.userRepository.find();
+        }
+
         const returnData = {
             draw: draw as number,
             recordsTotal: recordsTotal,

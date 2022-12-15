@@ -3,10 +3,7 @@ import dayjs from 'dayjs';
 import { User } from '../entity/User';
 import { AppDataSource } from '../DataSource';
 import _ from 'lodash';
-import axios, { AxiosResponse } from 'axios';
-import { hashPassword } from '../utils/BcryptUtils';
 import AdminUserApiController from './api/AdminUserApiController';
-import { CustomResultData } from '../type/CustomResultData';
 
 class AdminUserController {
     private userRepository = AppDataSource.getRepository(User);
@@ -15,7 +12,6 @@ class AdminUserController {
         this.createNewUser = this.createNewUser.bind(this);
         this.listPage = this.listPage.bind(this);
         this.editPage = this.editPage.bind(this);
-        this.search = this.search.bind(this);
         this.changePassword = this.changePassword.bind(this);
         this.changePasswordPage = this.changePasswordPage.bind(this);
         this.update = this.update.bind(this);
@@ -23,7 +19,8 @@ class AdminUserController {
 
     async addPage(req: Request, res: Response) {
         const flashMessage = req.flash('message')[0];
-        res.render('admin/users/add', { dataBack: {}, message: flashMessage });
+        const dataBack = req.flash('dataBack')[0];
+        res.render('admin/users/add', { dataBack: dataBack ?? {}, message: flashMessage });
     }
     async createNewUser(req: Request, res: Response) {
         // get body 
@@ -34,7 +31,8 @@ class AdminUserController {
         // create query builder to check exist email, username
         const result = await AdminUserApiController.saveData(user);
         if (result.status === 400) {
-            req.flash('message', result.message ?? 'Username or email is already exist!');
+            req.flash('message', result.message ?? 'Error when create user!');
+            req.flash('dataBack', req.body);
             return res.redirect('/admin/users/addPage');
         }
         if (result.status === 500) {
@@ -64,20 +62,13 @@ class AdminUserController {
             res.redirect('/admin/users/list');
         } else {
             req.flash('message', result.message ?? 'Can not update user!');
-            res.redirect(`/admin/users/edit/${id}`);
+            res.redirect(`/admin/users/edit/${id.trim()}`);
         }
     }
 
     async listPage(req: Request, res: Response) {
-        try {
-            const take = req.query.take || '0';
-            const limit = req.query.limit || '5';
-            const result: CustomResultData = await AdminUserApiController.getAllData(take as string, limit as string);
-            const flashMessage = req.flash('message')[0];
-            res.render('admin/users/list', { userList: result.data[0], queryBack: {}, dayjs: dayjs, message: flashMessage });
-        } catch (error) {
-            console.log(error);
-        }
+        const flashMessage = req.flash('message')[0];
+        res.render('admin/users/list', { queryBack: {}, dayjs: dayjs, message: flashMessage });
     }
 
     async changePassword(req: Request, res: Response) {
@@ -94,12 +85,6 @@ class AdminUserController {
     async changePasswordPage(req: Request, res: Response) {
         const id = req.params.id;
         res.render('admin/users/change-password', { userId: id });
-    }
-
-    async search(req: Request, res: Response) {
-        // get req params then map to User
-        const result = await AdminUserApiController.searchData(req.query);
-        res.render('admin/users/list', { userList: result.data, queryBack: req.query, dayjs: dayjs, message: null });
     }
 }
 

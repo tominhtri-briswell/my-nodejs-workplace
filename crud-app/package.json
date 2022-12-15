@@ -6,7 +6,8 @@
       "start": "ts-node src/index.ts",
       "typeorm": "typeorm-ts-node-commonjs",
       "build": "npx tsc",
-      "dev": "concurrently \"npx tsc --watch\" \"nodemon -q src/server.ts\""
+      "dev": "concurrently \"npx tsc --watch\" \"nodemon -q src/server.ts\"",
+      "nodemon": "nodemon src/server/ts"
    },
    "keywords": [
       "typeorm",
@@ -48,6 +49,7 @@
       "express": "^4.17.2",
       "express-rate-limit": "^6.7.0",
       "express-session": "^1.17.3",
+      "express-validator": "^6.14.2",
       "lodash": "^4.17.21",
       "mysql2": "^2.3.3",
       "nodemon": "^2.0.20",

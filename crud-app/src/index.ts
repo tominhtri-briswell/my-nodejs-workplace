@@ -22,6 +22,8 @@ declare module 'express-session' {
     }
 }
 
+
+
 dotenv.config();
 // secret variable from .env
 const PORT = process.env.PORT || 5000;

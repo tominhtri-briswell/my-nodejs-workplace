@@ -180,13 +180,17 @@
                         const username = $('form#searchForm input[type=text][name=username]').val();
                         const email = $('form#searchForm input[type=text][name=email]').val();
                         const role = $('form#searchForm input[type=checkbox][name=role]:checked').map(function(index, el) {
+                            // get multiple checked checkbox as array
                             return $(el).val();
                         }).get()
-
+                        const createdDateFrom = $('form#searchForm input[type=date][name=createdDateFrom]').val();
+                        const createdDateTo = $('form#searchForm input[type=date][name=createdDateTo]').val();
                         d.name = name
                         d.username = username;
                         d.email = email
                         d.role = role
+                        d.createdDateFrom = createdDateFrom
+                        d.createdDateTo = createdDateTo
                     }
                 },
                 columnDefs: [{
@@ -325,7 +329,6 @@
             $('#searchForm').on('submit', function(e) {
                 e.preventDefault();
                 // const url1 = `/api/admin/users/search?name=${name}&username=${username}&email=${email}&role=${role}}`
-                const url2 = `/api/admin/users/search`
                 usersTableElement.DataTable().ajax.reload()
             })
         })
