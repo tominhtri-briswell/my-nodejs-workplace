@@ -177,7 +177,7 @@ class AdminUserApiController {
         if (!_.isNil(length)) {
             builder.limit(parseInt(length as string));
         }
-        if (!_.isNil(start)) {
+        if (!_.isNil(start) && !_.isNil(length)) {
             builder.offset(parseInt(start as string));
         }
         if (!_.isNil(name)) {
