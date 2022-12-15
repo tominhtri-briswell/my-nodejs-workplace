@@ -101,32 +101,6 @@ class AdminUserApiController {
             message: message,
             isValid: isValid,
         };
-
-        if (_.isNil(user.name)) {
-            result.message = 'Name is required';
-            result.isValid = false;
-            return;
-        }
-        if (_.isNil(user.username)) {
-            result.message = 'Username is required';
-            result.isValid = false;
-            return result;
-        }
-        if (_.isNil(user.password)) {
-            result.message = 'Password is required';
-            result.isValid = false;
-            return result;
-        }
-        if (_.isNil(user.email)) {
-            result.message = 'Email is required';
-            result.isValid = false;
-            return result;
-        }
-        if (_.isNil(user.role)) {
-            result.message = 'Role is required';
-            result.isValid = false;
-            return result;
-        }
         if (user.username) {
             builder.orWhere('user.username = :username', { username: `${user.username}` });
             const list = await builder.getMany();
@@ -146,7 +120,7 @@ class AdminUserApiController {
             }
         }
 
-        return { message: 'All input is valid!', isValid: true };
+        return { message: 'Email and username is unique!', isValid: true };
 
     }
 

@@ -34,6 +34,10 @@ const userValidationRule = () => {
             .isEmpty()
             .trim()
             .escape(),
+        body('retype')
+            .not()
+            .isEmpty().withMessage(errMsg.ERR001('Retype'))
+            .custom((value, { req }) => value === req.body.password),
         body('email')
             .isLength({ max: 255 })
             .isEmail().withMessage(errMsg.ERR003('Email'))
@@ -66,8 +70,9 @@ const validateUser = (req: Request, res: Response, next: NextFunction) => {
     //         }
     //     ];
     // }
-    // return res.status(422).json({ errors: extractedErrors });
-    req.flash('message', Object.values(extractedErrors[0]))[0]; // get first value of the first object element in the array
+    return res.status(422).json({ errors: extractedErrors });
+    // req.flash('message', Object.values(extractedErrors[0]))[0]; // get first value of the first object element in the array
+    // req.flash('dataBack', req.body); // return req.body data back to front-end
     return res.redirect('/admin/users/addPage');
 };
 
