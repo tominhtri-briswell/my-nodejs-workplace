@@ -1,5 +1,9 @@
 import { Request, Response } from 'express';
 import _ from 'lodash';
+import * as fs from 'fs';
+
+import * as csv from 'csv-parse';
+import path from 'path';
 import { AppDataSource } from '../../DataSource';
 import { User } from '../../entity/User';
 import { CustomApiResult, CustomDataTableResult, CustomValidateResult } from '../../type/MyCustomType';
@@ -16,13 +20,14 @@ class AdminUserApiController {
         this.save = this.save.bind(this);
         this.update = this.update.bind(this);
         this.remove = this.remove.bind(this);
+        this.importCsv = this.importCsv.bind(this);
+        this.exportCsv = this.exportCsv.bind(this);
     }
 
     //for routing control purposes - START
     async getAll(req: Request, res: Response) {
         const { take, limit } = req.query;
         const result: CustomApiResult = await this.getAllData(take as string, limit as string);
-        // eslint-disable-next-line prefer-const
         return res.status(result.status).json(result);
     }
     async search(req: Request, res: Response) {
@@ -53,6 +58,45 @@ class AdminUserApiController {
         const id = parseInt(req.params.id);
         const result = await this.removeData(id);
         return res.status(result.status).json(result);
+    }
+    async importCsv(req: Request, res: Response) {
+        try {
+            if (req.file == undefined || req.file.mimetype !== 'text/csv') {
+                return res.status(400).json({ message: 'Please upload a CSV file' });
+            }
+            const filePath = path.join(__dirname, '../../../public/upload/csv/' + req.file.filename);
+            const result = [];
+            const parser = csv.parse({ "delimiter": ',', "trim": true });
+            const records: unknown[] = await new Promise((resolve, reject) => fs.createReadStream(filePath)
+                .pipe(parser)
+                .on("data", (row) => {
+                    result.push(row);
+                })
+                .on("error", (err) => {
+                    reject(err);
+                })
+                .on("end", () => {
+                    fs.unlink(filePath, (err) => {
+                        if (err) {
+                            console.error(err);
+                            return;
+                        }
+                    });
+                    resolve(result);
+                }));
+            records.map((row) => {
+                const user: User = Object.assign(new User(), {
+
+                });
+            });
+            return res.status(200).json({ message: 'Upload file csv success', file: filePath, data: records });
+        } catch (error) {
+            return res.status(500).json({ message: 'Error uploading file, Internal Server Error' });
+            // throw new Error(error);
+        }
+    }
+    async exportCsv(req: Request, res: Response) {
+        null;
     }
     //for routing control purposes - END
 

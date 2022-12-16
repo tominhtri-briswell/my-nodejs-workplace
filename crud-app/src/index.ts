@@ -2,6 +2,8 @@ import express, { Express } from 'express';
 import * as bodyParser from "body-parser";
 import dotenv from 'dotenv';
 import cors from 'cors';
+import morgan from 'morgan';
+import fs from 'fs';
 import flash from 'connect-flash';
 import session from 'express-session';
 import cookieParser from 'cookie-parser';
@@ -14,6 +16,8 @@ import checkInteralServerError from './middlewares/checkError';
 import { User } from './entity/User';
 import adminRouter from './route/AdminRouter';
 import checkIsLoggedIn from './middlewares/checkIsLoggedIn';
+import path from 'path';
+import upload from 'multer';
 declare module 'express-session' {
     interface SessionData {
         user: User;
@@ -21,17 +25,14 @@ declare module 'express-session' {
         loggedin: boolean;
     }
 }
-
-
-
 dotenv.config();
 // secret variable from .env
 const PORT = process.env.PORT || 5000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 const SESSION_SECRET = process.env.SESSION_SECRET;
 const COOKIE_SECRET = process.env.COOKIE_SECRET;
 
 AppDataSource.initialize().then(async () => {
-
     // create express app
     const app: Express = express();
     app.use(session({
@@ -39,7 +40,7 @@ AppDataSource.initialize().then(async () => {
         resave: false,
         saveUninitialized: true,
     }));
-
+    // setting middlewares
     app.use(bodyParser.json());
     app.use(bodyParser.urlencoded({ extended: true }));
     app.use(cookieParser(COOKIE_SECRET));
@@ -48,6 +49,13 @@ AppDataSource.initialize().then(async () => {
     app.set('view engine', 'ejs');
     app.use(flash());
     app.use(cors());
+    // logging
+    if (NODE_ENV === 'production') {
+        const accessLogStream = fs.createWriteStream(path.join(__dirname, '../access.log'), { flags: 'a' });
+        console.log(path.join(__dirname, '../access.log'));
+        app.use(morgan('common', { stream: accessLogStream }));
+    }
+    // app.use(morgan("dev"));
     // register express routes from defined application routes
     app.use('/', indexRouter);
     app.use(checkIsLoggedIn);

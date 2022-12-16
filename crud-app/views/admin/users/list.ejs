@@ -52,6 +52,21 @@
 
             <div class="container">
                 <div class="text-center">
+                    <div class="row mb-3 justify-content-around">
+                        <div class="col-md-4">
+                            <form id="importCsvForm">
+                                <div class="input-group">
+                                    <input type="file" class="form-control" name="file" id="importCsvInput"> <!-- accept=".csv" -->
+                                    <button type="button" class="btn btn-outline-secondary" id="importCsvBtn">Import CSV</button>
+                                    <span class="input-group-text" id="fileSize"></span>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-outline-secondary" id="exportCsvBtn">Export CSV</button>
+                        </div>
+                    </div>
+
                     <!-- start form -->
                     <form action="/admin/users/search" method="get" id="searchForm">
                         <div class="row justify-content-between">
@@ -146,6 +161,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js" integrity="sha512-d9xgZrVZpmmQlfonhQUvTR7lMPtO7NkZMkA0ABN3PHCbKA5nqylQ/yWlFAyY6hYgdF1Qh6nYiuADWwKB4C2WSw==" crossorigin="anonymous"></script>
     <!-- jquery -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.1/jquery.min.js" integrity="sha512-aVKKRRi/Q/YV+4mjoKBsE4x3H+BkegoM/em46NNlCqNTmUYADjBbeNefNxYV7giUp0VxICtqdrbqU7iVaeZNXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- jquery validation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js" integrity="sha512-rstIgDs0xPgmG6RX1Aba4KV5cWJbAMcvRCVmglpam9SoHZiUCyQVDdH2LPlxoHtrv17XWblE/V/PP+Tr04hbtA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <!-- datatable css -->
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.css">
     <!-- datatable js -->
@@ -330,6 +347,75 @@
                 e.preventDefault();
                 // const url1 = `/api/admin/users/search?name=${name}&username=${username}&email=${email}&role=${role}}`
                 usersTableElement.DataTable().ajax.reload()
+            })
+
+            // for import, export csv
+            const importCsvFormEl = $('#importCsvForm')
+            const importCsvInputEl = $('#importCsvInput')
+            const importCsvBtnEl = $('#importCsvBtn')
+            const importCsvFileSizeEl = $('#fileSize')
+
+            $.validator.addMethod('isValidCsvFile', function(value, el) {
+                // const fileSize = element.size / 1024 / 1024 // in megabytes - mb
+                // iSize = (Math.round(iSize * 100) / 100)
+                let file = el.files[0]
+                let fileSize = file.size // in bytes
+                let fileExt = file.name.substring(file.name.lastIndexOf('.') + 1, file.name.length) || file.name; // ex: csv | txt | docx | doc
+                console.log('file ext', fileExt);
+                console.log('file size: ', fileSize);
+                // check if file size is bigger than 2mb
+                if (fileSize > 2097152) {
+                    return false
+                }
+                if (fileExt !== 'csv') {
+                    return false
+                }
+                return true
+            }, '');
+
+            importCsvFormEl.validate({
+                rules: {
+                    "file": {
+                        required: true,
+                        isValidCsvFile: true
+                    }
+                },
+                messages: {
+                    "file": "",
+                }
+            });
+
+            $(document).on('click', '#importCsvBtn', function() {
+                if (importCsvFormEl.valid()) {
+                    const files = importCsvInputEl.prop('files')
+                    const file = files[0]
+                    const formData = new FormData()
+                    formData.append('file', file)
+                    $.ajax({
+                        method: 'POST',
+                        enctype: 'multipart/form-data',
+                        url: '/api/admin/users/csv/import',
+                        data: formData,
+                        contentType: false,
+                        processData: false,
+                        cache: false,
+                        success: function(data) {
+                            console.log('Return data: ', JSON.stringify(data, null, 4));
+                        },
+                        error: function(req, stat, err) {
+                            const errorModalEl = document.querySelector('#errorModal');
+                            const modal = new mdb.Modal(errorModalEl);
+                            $('#errorModalMessage').html(`
+                                <h3>${req.statusText}</h3>
+                                <p>${req.responseJSON.message.code || 'Error when uploading!'}</p>
+                            `)
+                            modal.show()
+                        }
+                    })
+                } else {
+                    alert('Please select a valid .csv file and no bigger than 2mb!')
+                }
+
             })
         })
     </script>

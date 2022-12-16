@@ -16,4 +16,14 @@ type CustomValidateResult = {
     message?: string;
 };
 
-export { CustomApiResult, CustomDataTableResult, CustomValidateResult };
+type DestinationCallback = (error: Error, destination: string) => void;
+
+type FileNameCallback = (error: Error | string | string[] | null, filename: string) => void;
+
+export {
+    CustomApiResult,
+    CustomDataTableResult,
+    CustomValidateResult,
+    DestinationCallback,
+    FileNameCallback
+};

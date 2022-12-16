@@ -11,7 +11,7 @@ adminUserRouter.use('/addPage', checkReqQueryEmpty);
 adminUserRouter.use('/search', checkReqQueryEmpty);
 adminUserRouter.use('/update', checkReqParamsEmpty);
 
-// base path: /users/
+// base path: /admin/users/
 adminUserRouter.get('/addPage', AdminUserController.addPage);
 adminUserRouter.post('/addPage', userValidationRule(), validateUser, AdminUserController.createNewUser); // add middleware for validate req.body and is exist username, email
 adminUserRouter.get('/edit/:id', AdminUserController.editPage);
