@@ -158,7 +158,6 @@ class AdminUserApiController {
                                     errorCount++;
                                 }
                             }
-
                         } else {
                             // Trường hợp id không có trong db => hiển thị lỗi "id not exist"
                             msgObj.messages.push(`Row ${i + 1} : Id not exist`);
