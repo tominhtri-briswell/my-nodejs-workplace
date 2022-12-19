@@ -16,7 +16,7 @@ const errMsg = {
     }
 };
 
-const userValidationRule = () => {
+const userValidationRule = (hasRetype: boolean) => {
     // task validation: https://redmine.bridevelopment.com/issues/106778
     return [
         body('name')
@@ -37,10 +37,15 @@ const userValidationRule = () => {
             .isEmpty()
             .trim()
             .escape(),
+        // body('retype')
+        //     .optional({ checkFalsy: true })
+        //     .not()
+        //     .isEmpty().withMessage(errMsg.ERR001('retype'))
+        //     .custom((value, { req }) => value === req.body.password).withMessage(errMsg.ERR004('retype', 'password')),
         body('retype')
-            .not()
-            .isEmpty().withMessage(errMsg.ERR001('retype'))
-            .custom((value, { req }) => value === req.body.password).withMessage(errMsg.ERR004('retype', 'password')),
+            .custom((value, { req }) => {
+                return hasRetype ? value === req.body.password : true;
+            }).withMessage(errMsg.ERR004('retype', 'password')),
         body('email')
             .isLength({ max: 255 })
             .isEmail().withMessage(errMsg.ERR003('email'))

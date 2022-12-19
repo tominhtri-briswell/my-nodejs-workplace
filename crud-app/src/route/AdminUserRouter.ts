@@ -13,7 +13,7 @@ adminUserRouter.use('/update', checkReqParamsEmpty);
 
 // base path: /admin/users/
 adminUserRouter.get('/addPage', AdminUserController.addPage);
-adminUserRouter.post('/addPage', userValidationRule(), validateUser, AdminUserController.createNewUser); // add middleware for validate req.body and is exist username, email
+adminUserRouter.post('/addPage', userValidationRule(true), validateUser, AdminUserController.createNewUser); // add middleware for validate req.body and is exist username, email
 adminUserRouter.get('/edit/:id', AdminUserController.editPage);
 adminUserRouter.post('/update', AdminUserController.update);
 adminUserRouter.get('/list', AdminUserController.listPage);

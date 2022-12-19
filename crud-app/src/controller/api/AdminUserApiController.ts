@@ -9,6 +9,8 @@ import { CustomApiResult, CustomDataTableResult, CustomValidateResult } from '..
 import { hashPassword } from '../../utils/BcryptUtils';
 import { getRandomPassword, isValidDate, _1mb } from '../../utils/MyUtils';
 import { InsertResult, QueryRunner, SelectQueryBuilder } from 'typeorm';
+import { userValidationRule } from '../../validator/user/UserValidator';
+import { validationResult } from 'express-validator';
 
 class AdminUserApiController {
     private userRepository = AppDataSource.getRepository(User);
@@ -45,7 +47,7 @@ class AdminUserApiController {
         const user: User = Object.assign(new User(), {
             name, username, password, email, role
         });
-        const result = await this.insertData(user, true, queryRunner);
+        const result = await this.insertData(user, false, true, queryRunner);
         return res.status(200).json(result);
     }
     async update(req: Request, res: Response) {
@@ -57,7 +59,7 @@ class AdminUserApiController {
         const user: User = Object.assign(new User(), {
             id, name, username, password, email, role
         });
-        const result = await this.updateData(user, queryRunner);
+        const result = await this.updateData(user, false, queryRunner);
         return res.status(result.status).json(result);
     }
     async remove(req: Request, res: Response) {
@@ -113,34 +115,55 @@ class AdminUserApiController {
                     email: row['email'] === '' ? null : row['email'],
                     role: row['role'],
                 });
-                const findUser: User = await queryRunner.manager.findOneBy(User, { id: row['id'] });
-                // Trường hợp id có trong db => chỉnh sửa user
-                if (!_.isNil(findUser)) {
-                    const result = await this.updateData(user, queryRunner);
-                    if (result.status === 404) {
-                        msgObj.messages.push(`Row ${i + 1} : ${result.message}`);
-                        errorCount++;
-                    }
-                    if (result.status === 500) {
-                        msgObj.messages.push(`Row ${i + 1} : ${result.message}`);
-                        errorCount++;
-                    }
-                } else {
-                    // Trường hợp id không có trong db => hiển thị lỗi "id not exist"
-                    msgObj.messages.push(`Row ${i + 1} : Id not exist`);
+                req.body = user;
+                await Promise.all(userValidationRule(false).map((validation) => validation.run(req)));
+                const errors = validationResult(req);
+                // const errors: string[] = [];
+
+                if (errors.isEmpty()) {
+                    delete req.body;
+                    msgObj.messages.push(`Row ${i + 1} : ${errors.array()[i]}`);
                     errorCount++;
-                }
-                // + Trường hợp id rỗng => thêm mới user
-                if (_.isNil(row['id']) || _.isEmpty(row['id'])) {
-                    user.password = getRandomPassword();
-                    const result = await this.insertData(user, false, queryRunner);
-                    if (result.status === 500) {
-                        msgObj.messages.push(`Row ${i + 1} : ${result.message}`);
-                        errorCount++;
-                    }
-                    if (result.status === 400) {
-                        msgObj.messages.push(`Row ${i + 1} : ${result.message}`);
-                        errorCount++;
+                } else {
+                    // + Trường hợp id rỗng => thêm mới user
+                    if (_.isNil(row['id']) || _.isEmpty(row['id'])) {
+                        if (!_.isNil(row['deleted']) && row['deleted'] === 'y') {
+                            // deleted="y" và colum id không có nhập thì không làm gì hết, ngược lại sẽ xóa row theo id tương ứng dưới DB trong bảng user
+                            continue;
+                        }
+                        user.password = getRandomPassword();
+                        const result = await this.insertData(user, true, false, queryRunner);
+                        if (result.status === 500) {
+                            msgObj.messages.push(`Row ${i + 1} : ${result.message}`);
+                            errorCount++;
+                        }
+                        if (result.status === 400) {
+                            msgObj.messages.push(`Row ${i + 1} : ${result.message}`);
+                            errorCount++;
+                        }
+                    } else {
+                        // Trường hợp id có trong db => chỉnh sửa user nếu deleted != 'y'
+                        const findUser = await queryRunner.manager.findOneBy(User, { id: row['id'] });
+                        if (!_.isNil(findUser)) {
+                            if (!_.isNil(row['deleted']) && row['deleted'] !== 'y') {
+                                await queryRunner.manager.remove<User>(findUser);
+                            } else {
+                                const result = await this.updateData(user, true, queryRunner);
+                                if (result.status === 404) {
+                                    msgObj.messages.push(`Row ${i + 1} : ${result.message}`);
+                                    errorCount++;
+                                }
+                                if (result.status === 500) {
+                                    msgObj.messages.push(`Row ${i + 1} : ${result.message}`);
+                                    errorCount++;
+                                }
+                            }
+
+                        } else {
+                            // Trường hợp id không có trong db => hiển thị lỗi "id not exist"
+                            msgObj.messages.push(`Row ${i + 1} : Id not exist`);
+                            errorCount++;
+                        }
                     }
                 }
             }
@@ -244,7 +267,11 @@ class AdminUserApiController {
         return { message: 'Email and username is unique!', isValid: true };
     }
 
-    async insertData(user: User, isPasswordHash: boolean, queryRunner: QueryRunner): Promise<CustomApiResult> {
+    async validateUser(user: User): Promise<CustomValidateResult> {
+        return null;
+    }
+
+    async insertData(user: User, wantValidate: boolean, isPasswordHash: boolean, queryRunner: QueryRunner): Promise<CustomApiResult> {
         // check usenrmae and email is already exist(middleware already convert '' to null)
         const validateUser = await this.checkUsernameEmailUnique(user, queryRunner);
         if (!validateUser.isValid) {
@@ -264,7 +291,7 @@ class AdminUserApiController {
             return { message: 'Error when inserting user!', status: 500 };
         }
     }
-    async updateData(user: User, queryRunner: QueryRunner): Promise<CustomApiResult> {
+    async updateData(user: User, wantValidate: boolean, queryRunner: QueryRunner): Promise<CustomApiResult> {
         user.updated_at = new Date();
         if (!_.isNil(user.password)) {
             const hashed = await hashPassword(user.password);

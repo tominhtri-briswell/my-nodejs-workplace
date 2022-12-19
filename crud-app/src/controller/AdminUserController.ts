@@ -4,6 +4,7 @@ import { User } from '../entity/User';
 import { AppDataSource } from '../DataSource';
 import _ from 'lodash';
 import AdminUserApiController from './api/AdminUserApiController';
+import { CustomApiResult } from '../type/MyCustomType';
 
 class AdminUserController {
     private userRepository = AppDataSource.getRepository(User);
@@ -32,7 +33,7 @@ class AdminUserController {
             name, username, password, email, role
         });
         try {
-            const result = await AdminUserApiController.insertData(user, true, queryRunner);
+            const result: CustomApiResult = await AdminUserApiController.insertData(user, false, true, queryRunner);
             await queryRunner.commitTransaction();
             req.flash('message', result.message ?? 'New user created!!');
             return res.redirect('/admin/users/list');
@@ -48,7 +49,7 @@ class AdminUserController {
 
     async editPage(req: Request, res: Response) {
         const { id } = req.params;
-        const result = await AdminUserApiController.getOneData(parseInt(id));
+        const result: CustomApiResult = await AdminUserApiController.getOneData(parseInt(id));
         if (result.status === 200) {
             const flashMessage = req.flash('message')[0];
             res.render('admin/users/edit', { dataBack: {}, message: flashMessage, user: result.data });
@@ -65,7 +66,7 @@ class AdminUserController {
         const user: User = Object.assign(new User(), { id, name, username, email, role });
 
         try {
-            const result = await AdminUserApiController.updateData(user, queryRunner);
+            const result: CustomApiResult = await AdminUserApiController.updateData(user, false, queryRunner);
             if (result.status === 404) {
                 req.flash('message', result.message ?? `Can't find user!`);
                 res.redirect('/admin/users/list');
@@ -94,7 +95,7 @@ class AdminUserController {
         const { id, password } = req.body;
         const user: User = Object.assign(new User(), { id, password });
         try {
-            const result = await AdminUserApiController.updateData(user, queryRunner);
+            const result: CustomApiResult = await AdminUserApiController.updateData(user, false, queryRunner);
             if (result.status === 404) {
                 req.flash('message', result.message ?? `Can't find user!`);
             }
