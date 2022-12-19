@@ -27,20 +27,12 @@ export class User {
     @Column({ type: "nvarchar", length: 255, nullable: true })
     created_by!: string;
 
-    @Column({ nullable: true })
+    @Column({ name: "updated_at", nullable: true })
     updated_at!: Date;
 
     @Column({ type: "nvarchar", length: 255, nullable: true })
     updated_by!: string;
 
-    @Column({ nullable: true })
+    @Column({ name: "deleted_at", nullable: true })
     deleted_at!: Date;
-
-    hashPassword() {
-        this.password = bcrypt.hashSync(this.password, 10);
-    }
-
-    checkIfUnencryptedPasswordIsValid(unencryptedPassword: string) {
-        return bcrypt.compareSync(unencryptedPassword, this.password);
-    }
 }

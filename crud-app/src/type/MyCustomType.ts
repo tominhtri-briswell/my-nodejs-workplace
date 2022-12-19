@@ -1,5 +1,6 @@
 type CustomApiResult = {
     message?: string;
+    messages?: string[];
     data?: unknown;
     status?: number;
 };

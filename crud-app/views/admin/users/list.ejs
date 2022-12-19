@@ -181,7 +181,7 @@
     <% } %>
 
     <!-- jquery script -->
-    <script>
+    <script type="text/javascript">
         $(document).ready(function() {
             const usersTableElement = $('#usersTable')
             const table = usersTableElement.DataTable({
@@ -385,6 +385,34 @@
                 }
             });
 
+            const openErrorModalWithMsg = (modalId, modalMsgId, modalOkBtnId, status, message, messages, wantReload) => {
+                const errorModalEl = document.querySelector(`#${modalId}`);
+                const errorModalBodyEl = document.querySelector(`#${modalMsgId}`);
+                const errorModalOkBtn = document.querySelector(`#${modalOkBtnId}`);
+                let _msg = ``;
+                if (message != null && messages == null) {
+                    _msg = `
+                        <h3>${status || ''}</h3>
+                        <p>${message}</p>
+                     `
+                } else {
+                    _msg = `
+                        <h3>${status || ''}</h3>
+                        <ul class="text-center">
+                            ${messages.map(msg => `<li class="row">${msg}</li>`)}
+                        </ul>
+                    `
+                }
+                errorModalBodyEl.innerHTML = _msg
+                const modal = new mdb.Modal(errorModalEl);
+                modal.show()
+                if (wantReload) {
+                    errorModalOkBtn.addEventListener('click', () => {
+                        location.reload()
+                    })
+                }
+            }
+
             $(document).on('click', '#importCsvBtn', function() {
                 if (importCsvFormEl.valid()) {
                     const files = importCsvInputEl.prop('files')
@@ -400,22 +428,20 @@
                         processData: false,
                         cache: false,
                         success: function(data) {
+                            // location.reload();
+                            openErrorModalWithMsg('errorModal', 'errorModalMessage', 'errorModalOkBtn', data.status, data.message, data.messages, true)
                             console.log('Return data: ', JSON.stringify(data, null, 4));
                         },
                         error: function(req, stat, err) {
-                            const errorModalEl = document.querySelector('#errorModal');
-                            const modal = new mdb.Modal(errorModalEl);
-                            $('#errorModalMessage').html(`
-                                <h3>${req.statusText}</h3>
-                                <p>${req.responseJSON.message.code || 'Error when uploading!'}</p>
-                            `)
-                            modal.show()
+                            openErrorModalWithMsg('errorModal', 'errorModalMessage', 'errorModalOkBtn',
+                                req.statusText || req.responseJSON.status,
+                                req.responseJSON.message,
+                                req.responseJSON.messages)
                         }
                     })
                 } else {
                     alert('Please select a valid .csv file and no bigger than 2mb!')
                 }
-
             })
         })
     </script>

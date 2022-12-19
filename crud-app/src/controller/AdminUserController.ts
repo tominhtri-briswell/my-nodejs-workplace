@@ -23,23 +23,27 @@ class AdminUserController {
         res.render('admin/users/add', { dataBack: dataBack ?? {}, message: flashMessage });
     }
     async createNewUser(req: Request, res: Response) {
+        const queryRunner = AppDataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
         // get body 
         const { name, username, password, email, role } = req.body;
         const user: User = Object.assign(new User(), {
             name, username, password, email, role
         });
-        // create query builder to check exist email, username
-        const result = await AdminUserApiController.saveData(user);
-        if (result.status === 400) {
-            req.flash('message', result.message ?? 'Error when create user!');
+        try {
+            const result = await AdminUserApiController.insertData(user, true, queryRunner);
+            await queryRunner.commitTransaction();
+            req.flash('message', result.message ?? 'New user created!!');
+            return res.redirect('/admin/users/list');
+        } catch (error) {
+            await queryRunner.rollbackTransaction();
+            req.flash('message', error.message ?? 'Error when create user!');
             req.flash('dataBack', req.body);
             return res.redirect('/admin/users/addPage');
+        } finally {
+            await queryRunner.release();
         }
-        if (result.status === 500) {
-            return res.render('admin/users/add', { dataBack: req.body, message: result.message });
-        }
-        req.flash('message', result.message ?? 'New user created!!');
-        return res.redirect('/admin/users/list');
     }
 
     async editPage(req: Request, res: Response) {
@@ -54,15 +58,27 @@ class AdminUserController {
         }
     }
     async update(req: Request, res: Response) {
+        const queryRunner = AppDataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
         const { id, name, username, email, role } = req.body;
         const user: User = Object.assign(new User(), { id, name, username, email, role });
-        const result = await AdminUserApiController.updateData(user);
-        if (result.status === 200) {
+
+        try {
+            const result = await AdminUserApiController.updateData(user, queryRunner);
+            if (result.status === 404) {
+                req.flash('message', result.message ?? `Can't find user!`);
+                res.redirect('/admin/users/list');
+            }
+            await queryRunner.commitTransaction();
             req.flash('message', result.message ?? 'Update successfully!');
             res.redirect('/admin/users/list');
-        } else {
-            req.flash('message', result.message ?? 'Can not update user!');
+        } catch (error) {
+            await queryRunner.rollbackTransaction();
+            req.flash('message', error.message ?? 'Can not update user!');
             res.redirect(`/admin/users/edit/${id.trim()}`);
+        } finally {
+            await queryRunner.release();
         }
     }
 
@@ -72,15 +88,26 @@ class AdminUserController {
     }
 
     async changePassword(req: Request, res: Response) {
+        const queryRunner = AppDataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
         const { id, password } = req.body;
         const user: User = Object.assign(new User(), { id, password });
-        const result = await AdminUserApiController.updateData(user);
-        if (result.status === 200) {
+        try {
+            const result = await AdminUserApiController.updateData(user, queryRunner);
+            if (result.status === 404) {
+                req.flash('message', result.message ?? `Can't find user!`);
+            }
+            await queryRunner.commitTransaction();
             req.flash('message', result.message ?? 'Password changed successfully!');
-        } else {
-            req.flash('message', result.message ?? 'Error when trying to update password! Please try again');
+            res.redirect(`/admin/users/edit/${id}`);
+        } catch (error) {
+            await queryRunner.rollbackTransaction();
+            req.flash('message', error.message ?? 'Error when trying to update password! Please try again');
+            res.redirect(`/admin/users/edit/${id}`);
+        } finally {
+            await queryRunner.release();
         }
-        res.redirect(`/admin/users/edit/${id}`);
     }
     async changePasswordPage(req: Request, res: Response) {
         const id = req.params.id;

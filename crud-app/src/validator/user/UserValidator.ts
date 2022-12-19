@@ -45,8 +45,7 @@ const userValidationRule = () => {
             .isLength({ max: 255 })
             .isEmail().withMessage(errMsg.ERR003('email'))
             .trim()
-            .escape()
-            .normalizeEmail(),
+            .escape(),
         body('role')
             .not()
             .isEmpty().withMessage(errMsg.ERR001('role'))
@@ -65,7 +64,7 @@ const validateUser = (req: Request, res: Response, next: NextFunction) => {
     // return res.status(422).json({ errors: extractedErrors });
     req.flash('message', Object.values(extractedErrors[0]))[0]; // get first value of the first object element in the array
     req.flash('dataBack', req.body); // return req.body data back to front-end
-    res.redirect('/admin/users/addPage')
+    res.redirect('/admin/users/addPage');
 };
 
 export { userValidationRule, validateUser }

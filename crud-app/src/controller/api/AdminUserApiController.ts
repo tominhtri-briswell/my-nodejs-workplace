@@ -1,14 +1,14 @@
 import { Request, Response } from 'express';
 import _ from 'lodash';
 import * as fs from 'fs';
-
 import * as csv from 'csv-parse';
-import path from 'path';
+import v from 'validator';
 import { AppDataSource } from '../../DataSource';
 import { User } from '../../entity/User';
 import { CustomApiResult, CustomDataTableResult, CustomValidateResult } from '../../type/MyCustomType';
 import { hashPassword } from '../../utils/BcryptUtils';
-import { isValidDate } from '../../utils/MyUtils';
+import { getRandomPassword, isValidDate, _1mb } from '../../utils/MyUtils';
+import { InsertResult, QueryRunner, SelectQueryBuilder } from 'typeorm';
 
 class AdminUserApiController {
     private userRepository = AppDataSource.getRepository(User);
@@ -38,20 +38,26 @@ class AdminUserApiController {
         return res.status(result.status).json(result);
     }
     async save(req: Request, res: Response) {
+        const queryRunner = AppDataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
         const { name, username, password, email, role } = req.body;
         const user: User = Object.assign(new User(), {
             name, username, password, email, role
         });
-        const result = await this.saveData(user);
+        const result = await this.insertData(user, true, queryRunner);
         return res.status(200).json(result);
     }
     async update(req: Request, res: Response) {
+        const queryRunner = AppDataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
         const { name, username, password, email, role } = req.body;
         const id = req.params.id;
         const user: User = Object.assign(new User(), {
             id, name, username, password, email, role
         });
-        const result = await this.updateData(user);
+        const result = await this.updateData(user, queryRunner);
         return res.status(result.status).json(result);
     }
     async remove(req: Request, res: Response) {
@@ -60,14 +66,26 @@ class AdminUserApiController {
         return res.status(result.status).json(result);
     }
     async importCsv(req: Request, res: Response) {
+        const queryRunner = AppDataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        let errorCount = 0;
+        const msgObj: CustomApiResult = { messages: [], status: 200 };
         try {
             if (req.file == undefined || req.file.mimetype !== 'text/csv') {
                 return res.status(400).json({ message: 'Please upload a CSV file' });
             }
-            const filePath = path.join(__dirname, '../../../public/upload/csv/' + req.file.filename);
-            const result = [];
-            const parser = csv.parse({ "delimiter": ',', "trim": true });
-            const records: unknown[] = await new Promise((resolve, reject) => fs.createReadStream(filePath)
+            if (req.file.size > (_1mb * 2)) {
+                return res.status(400).json({ message: 'File size cannot be larger than 2MB' });
+            }
+            const result = []; // temporary array to store data
+            const parser = csv.parse({
+                delimiter: ',', // phân cách giữa các cell trong mỗi row
+                trim: true, // bỏ các khoảng trắng ở đầu và cuối của mỗi cell
+                skip_empty_lines: true, // bỏ qua các dòng trống
+                columns: true, // gán header cho từng column trong row 
+            });
+            const records: unknown[][] = await new Promise((resolve, reject) => fs.createReadStream(req.file.path)
                 .pipe(parser)
                 .on("data", (row) => {
                     result.push(row);
@@ -76,7 +94,8 @@ class AdminUserApiController {
                     reject(err);
                 })
                 .on("end", () => {
-                    fs.unlink(filePath, (err) => {
+                    // xóa file csv sau khi đã đọc xong
+                    fs.unlink(req.file.path, (err) => {
                         if (err) {
                             console.error(err);
                             return;
@@ -84,15 +103,61 @@ class AdminUserApiController {
                     });
                     resolve(result);
                 }));
-            records.map((row) => {
+            // iterate csv records data and check row
+            for (let i = 0; i < records.length; i++) {
+                const row = records[i];
                 const user: User = Object.assign(new User(), {
-
+                    id: row['id'] === '' ? null : row['id'],
+                    name: row['name'] === '' ? null : row['name'],
+                    username: row['username'] === '' ? null : row['username'],
+                    email: row['email'] === '' ? null : row['email'],
+                    role: row['role'],
                 });
-            });
-            return res.status(200).json({ message: 'Upload file csv success', file: filePath, data: records });
+                const findUser: User = await queryRunner.manager.findOneBy(User, { id: row['id'] });
+                // Trường hợp id có trong db => chỉnh sửa user
+                if (!_.isNil(findUser)) {
+                    const result = await this.updateData(user, queryRunner);
+                    if (result.status === 404) {
+                        msgObj.messages.push(`Row ${i + 1} : ${result.message}`);
+                        errorCount++;
+                    }
+                    if (result.status === 500) {
+                        msgObj.messages.push(`Row ${i + 1} : ${result.message}`);
+                        errorCount++;
+                    }
+                } else {
+                    // Trường hợp id không có trong db => hiển thị lỗi "id not exist"
+                    msgObj.messages.push(`Row ${i + 1} : Id not exist`);
+                    errorCount++;
+                }
+                // + Trường hợp id rỗng => thêm mới user
+                if (_.isNil(row['id']) || _.isEmpty(row['id'])) {
+                    user.password = getRandomPassword();
+                    const result = await this.insertData(user, false, queryRunner);
+                    if (result.status === 500) {
+                        msgObj.messages.push(`Row ${i + 1} : ${result.message}`);
+                        errorCount++;
+                    }
+                    if (result.status === 400) {
+                        msgObj.messages.push(`Row ${i + 1} : ${result.message}`);
+                        errorCount++;
+                    }
+                }
+            }
+            if (errorCount !== 0) {
+                msgObj.status = 500;
+                await queryRunner.rollbackTransaction();
+                console.log(msgObj.messages);
+                return res.status(msgObj.status ?? 500).json({ messages: msgObj.messages, status: msgObj.status });
+            } else {
+                await queryRunner.commitTransaction();
+                return res.status(msgObj.status ?? 200).json({ message: 'Import csv file successfully!', status: msgObj.status });
+            }
+            // return res.status(200).json({ message: 'Upload file csv success', file: req.file.path, data: records });
         } catch (error) {
-            return res.status(500).json({ message: 'Error uploading file, Internal Server Error' });
-            // throw new Error(error);
+            return res.status(msgObj.status ?? 500).json({ messages: msgObj.messages, status: msgObj.status });
+        } finally {
+            await queryRunner.release();
         }
     }
     async exportCsv(req: Request, res: Response) {
@@ -137,89 +202,85 @@ class AdminUserApiController {
         return { message: `Found user with id ${id}`, data: findUser, status: 200 };
     }
 
-    async validateUser(user: User): Promise<CustomValidateResult> {
-        const builder = this.userRepository.createQueryBuilder('user').where('');
+    async checkUsernameEmailUnique(user: User, queryRunner?: QueryRunner): Promise<CustomValidateResult> {
+        let builder: SelectQueryBuilder<User>;
         let message: string;
         let isValid: boolean;
         const result = {
             message: message,
             isValid: isValid,
         };
+        if (!queryRunner) {
+            builder = this.userRepository.createQueryBuilder('user').where('');
+        }
         if (user.username) {
-            builder.orWhere('user.username = :username', { username: `${user.username}` });
-            const list = await builder.getMany();
-            if (list.length > 0) {
+            let findUser: User;
+            if (!queryRunner) {
+                builder.orWhere('user.username = :username', { username: `${user.username}` });
+                findUser = await builder.getOne();
+            } else {
+                findUser = await queryRunner.manager.findOneBy(User, { username: user.username });
+            }
+            if (findUser) {
                 result.message = 'Username is already exist!';
                 result.isValid = false;
                 return result;
             }
         }
         if (user.email) {
-            builder.orWhere('user.email = :email', { email: `${user.email}` });
-            const list = await builder.getMany();
-            if (list.length > 0) {
+            let findUser: User;
+            if (!queryRunner) {
+                builder.orWhere('user.email = :email', { email: `${user.email}` });
+                findUser = await builder.getOne();
+            } else {
+                findUser = await queryRunner.manager.findOneBy(User, { email: user.email });
+            }
+            if (findUser) {
                 result.message = 'Email is already exist!';
                 result.isValid = false;
                 return result;
             }
         }
-
         return { message: 'Email and username is unique!', isValid: true };
-
     }
 
-    async saveData(user: User): Promise<CustomApiResult> {
-        // check all input is null and is already exist(middleware already convert '' to null)
-        const validateUser = await this.validateUser(user);
+    async insertData(user: User, isPasswordHash: boolean, queryRunner: QueryRunner): Promise<CustomApiResult> {
+        // check usenrmae and email is already exist(middleware already convert '' to null)
+        const validateUser = await this.checkUsernameEmailUnique(user, queryRunner);
         if (!validateUser.isValid) {
             return { message: validateUser.message, status: 400 };
         }
         user.created_at = new Date();
-        // hash password with bcrypt
-        const hashed = await hashPassword(user.password);
-        user.password = hashed;
-        // create query runner
-        const queryRunner = AppDataSource.createQueryRunner();
-        await queryRunner.connect();
-        await queryRunner.startTransaction();
+        // hash pass if isPasswordHash is true, incase of insert data from csv file (already had pass)
+        if (isPasswordHash) {
+            const hashed = await hashPassword(user.password);
+            user.password = hashed;
+        }
         try {
-            const newUser: User = await queryRunner.manager.save(user);
-            await queryRunner.commitTransaction();
-            return { message: "User saved successfully", data: newUser, status: 200 };
+            const insertRes: InsertResult = await queryRunner.manager.insert(User, user);
+            const newUser: User | null = await this.userRepository.findOneBy({ id: insertRes.identifiers[0].id });
+            return { message: 'User created successfully!', data: newUser, status: 200 };
         } catch (error) {
-            await queryRunner.rollbackTransaction();
-            return { message: "Error! Can't save new user!", status: 500 };
-        } finally {
-            await queryRunner.release();
+            return { message: 'Error when inserting user!', status: 500 };
         }
     }
-    async updateData(user: User): Promise<CustomApiResult> {
-        // create query runner
-        const queryRunner = AppDataSource.createQueryRunner();
-        await queryRunner.connect();
-        await queryRunner.startTransaction();
-
+    async updateData(user: User, queryRunner: QueryRunner): Promise<CustomApiResult> {
         user.updated_at = new Date();
         if (!_.isNil(user.password)) {
             const hashed = await hashPassword(user.password);
             user.password = hashed;
         }
         // check if user exist by id
-        const findUser: User | null = await this.userRepository.findOneBy({ id: user.id });
+        const findUser: User | null = await queryRunner.manager.findOneBy(User, { id: user.id });
         if (!findUser) {
             return { message: `User ${user.id} not found`, status: 404 };
         }
-        // start transaction
         try {
             await queryRunner.manager.update(User, user.id, user);
-            const updatedUser: User | null = await this.userRepository.findOneBy({ id: user.id });
-            await queryRunner.commitTransaction();
+            const updatedUser: User | null = await queryRunner.manager.findOneBy(User, { id: user.id });
             return { message: `Update user successfully!`, data: updatedUser, status: 200 };
         } catch (error) {
-            await queryRunner.rollbackTransaction();
-            return { message: `Error when update user`, status: 500 };
-        } finally {
-            await queryRunner.release();
+            return { message: `Error when updating user!`, status: 500 };
         }
     }
 
