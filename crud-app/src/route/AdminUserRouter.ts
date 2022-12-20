@@ -2,7 +2,7 @@ import express from 'express';
 import AdminUserController from '../controller/AdminUserController';
 import checkReqParamsEmpty from '../middlewares/checkReqParamsEmpty';
 import checkReqQueryEmpty from '../middlewares/checkReqQueryEmpty';
-import { userValidationRule, validateUser } from '../validator/user/UserValidator';
+import { userExpressValidationRule, expressValidateUser } from '../validator/user/UserValidator';
 const adminUserRouter = express.Router();
 
 // router level middlewares
@@ -13,7 +13,7 @@ adminUserRouter.use('/update', checkReqParamsEmpty);
 
 // base path: /admin/users/
 adminUserRouter.get('/addPage', AdminUserController.addPage);
-adminUserRouter.post('/addPage', userValidationRule(true), validateUser, AdminUserController.createNewUser); // add middleware for validate req.body and is exist username, email
+adminUserRouter.post('/addPage', userExpressValidationRule(true), expressValidateUser, AdminUserController.createNewUser); // add middleware for validate req.body and is exist username, email
 adminUserRouter.get('/edit/:id', AdminUserController.editPage);
 adminUserRouter.post('/update', AdminUserController.update);
 adminUserRouter.get('/list', AdminUserController.listPage);

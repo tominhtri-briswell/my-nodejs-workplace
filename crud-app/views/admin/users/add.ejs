@@ -115,36 +115,36 @@
             $.validator.addMethod('checkValidEmail', function(value, element) {
                 return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(value);
             }, 'Please enter a valid email address please !');
-            $('#addUserForm').validate({
-                rules: {
-                    "name": {
-                        required: true,
-                        maxlength: 100
-                    },
-                    "username": {
-                        required: true,
-                        maxlength: 255
-                    },
-                    "email": {
-                        required: true,
-                        maxlength: 255,
-                        checkValidEmail: true
-                    },
-                    "password": {
-                        required: true,
-                        minlength: 6,
-                        maxlength: 20
-                    },
-                    "retype": {
-                        equalTo: "#password",
-                        minlength: 6,
-                        maxlength: 20
-                    },
-                    "role": {
-                        required: true,
-                    }
-                }
-            });
+            // $('#addUserForm').validate({
+            //     rules: {
+            //         "name": {
+            //             required: true,
+            //             maxlength: 100
+            //         },
+            //         "username": {
+            //             required: true,
+            //             maxlength: 255
+            //         },
+            //         "email": {
+            //             required: true,
+            //             maxlength: 255,
+            //             checkValidEmail: true
+            //         },
+            //         "password": {
+            //             required: true,
+            //             minlength: 6,
+            //             maxlength: 20
+            //         },
+            //         "retype": {
+            //             equalTo: "#password",
+            //             minlength: 6,
+            //             maxlength: 20
+            //         },
+            //         "role": {
+            //             required: true,
+            //         }
+            //     }
+            // });
 
             $(document).on('click', '#submitBtn', function(e) {
                 const formElement = $('#addUserForm');

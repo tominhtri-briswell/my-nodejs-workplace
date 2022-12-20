@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express, {  } from 'express';
 import IndexController from '../controller/IndexController';
 const indexRouter = express.Router();
 

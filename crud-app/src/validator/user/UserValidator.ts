@@ -13,10 +13,19 @@ const errMsg = {
     },
     ERR004: (field1: string, field2: string) => {
         return `${field1.toUpperCase()} must match ${field2}`;
+    },
+    ERR005: (field: string, min: number) => {
+        return `${field.toUpperCase()} should be bigger than ${min} characters`;
+    },
+    ERR006: (field: string, max: number) => {
+        return `${field.toUpperCase()} should be less than equal to ${max} characters`;
+    },
+    ERR007: (field: string, type: string) => {
+        return `${field.toUpperCase()} is not of type ${type.toLowerCase()}`;
     }
 };
 
-const userValidationRule = (hasRetype: boolean) => {
+const userExpressValidationRule = (hasRetype: boolean) => {
     // task validation: https://redmine.bridevelopment.com/issues/106778
     return [
         body('name')
@@ -57,7 +66,7 @@ const userValidationRule = (hasRetype: boolean) => {
     ];
 };
 
-const validateUser = (req: Request, res: Response, next: NextFunction) => {
+const expressValidateUser = (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
     if (errors.isEmpty()) {
         return next();
@@ -72,5 +81,5 @@ const validateUser = (req: Request, res: Response, next: NextFunction) => {
     res.redirect('/admin/users/addPage');
 };
 
-export { userValidationRule, validateUser }
+export { userExpressValidationRule, expressValidateUser, errMsg }
 

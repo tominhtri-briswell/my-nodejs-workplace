@@ -1,7 +1,7 @@
-type CustomApiResult = {
+type CustomApiResult<Entity> = {
     message?: string;
     messages?: string[];
-    data?: unknown;
+    data?: Entity | Entity[] | null;
     status?: number;
 };
 
@@ -12,9 +12,10 @@ type CustomDataTableResult = {
     data: unknown[],
 };
 
-type CustomValidateResult = {
+type CustomValidateResult<Entity> = {
     isValid: boolean,
     message?: string;
+    data?: Entity | Entity[] | null;
 };
 
 type DestinationCallback = (error: Error, destination: string) => void;
