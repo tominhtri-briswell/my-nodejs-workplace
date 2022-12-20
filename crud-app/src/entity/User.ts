@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
-import { IsEmail, IsNotEmpty, MaxLength, MinLength, IsOptional, IsNotIn, IsIn } from "class-validator";
+import { IsEmail, IsNotEmpty, MaxLength, MinLength, IsOptional, IsIn } from "class-validator";
 import { errMsg } from "../validator/user/UserValidator";
 
 @Entity("users")

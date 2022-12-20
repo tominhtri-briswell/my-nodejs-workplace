@@ -11,6 +11,7 @@ adminUserApiRouter.post('/', AdminUserApiController.save);
 adminUserApiRouter.put('/:id', AdminUserApiController.update);
 adminUserApiRouter.delete('/:id', AdminUserApiController.remove);
 adminUserApiRouter.post('/csv/import', uploadFile.single('file'), AdminUserApiController.importCsv);
+adminUserApiRouter.get('/csv/export', AdminUserApiController.exportCsv);
 adminUserApiRouter.post('/csv/export', AdminUserApiController.exportCsv);
 
 export default adminUserApiRouter;

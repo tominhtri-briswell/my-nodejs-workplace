@@ -16,6 +16,7 @@ type CustomValidateResult<Entity> = {
     isValid: boolean,
     message?: string;
     data?: Entity | Entity[] | null;
+    datas?: Entity[] | null;
 };
 
 type DestinationCallback = (error: Error, destination: string) => void;

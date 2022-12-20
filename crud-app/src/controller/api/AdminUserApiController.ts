@@ -7,10 +7,13 @@ import { AppDataSource } from '../../DataSource';
 import { User } from '../../entity/User';
 import { CustomApiResult, CustomDataTableResult, CustomValidateResult } from '../../type/MyCustomType';
 import { hashPassword } from '../../utils/BcryptUtils';
-import { getRandomPassword, isValidDate, _1mb } from '../../utils/MyUtils';
-import { InsertResult, QueryRunner, SelectQueryBuilder } from 'typeorm';
+import { bench, getRandomPassword, isValidDate, _1mb } from '../../utils/MyUtils';
+import { Entity, In, InsertResult, LessThan, QueryRunner, SelectQueryBuilder } from 'typeorm';
 import { validate, ValidationError } from 'class-validator';
-
+import { generate } from 'csv-generate';
+import { stringify } from 'csv-stringify';
+import dayjs from 'dayjs';
+import path from 'path';
 class AdminUserApiController {
     private userRepository = AppDataSource.getRepository(User);
 
@@ -75,9 +78,9 @@ class AdminUserApiController {
             if (req.file == undefined || req.file.mimetype !== 'text/csv') {
                 return res.status(400).json({ message: 'Please upload a CSV file' });
             }
-            if (req.file.size > (_1mb * 2)) {
-                return res.status(400).json({ message: 'File size cannot be larger than 2MB' });
-            }
+            // if (req.file.size > (_1mb * 2)) {
+            //     return res.status(400).json({ message: 'File size cannot be larger than 2MB' });
+            // }
             const parser = csv.parse({
                 delimiter: ',', // phân cách giữa các cell trong mỗi row
                 trim: true, // bỏ các khoảng trắng ở đầu và cuối của mỗi cell
@@ -85,7 +88,15 @@ class AdminUserApiController {
                 columns: true, // gán header cho từng column trong row 
             });
             const records: unknown[] = await this.readCsvData(req.file.path, parser);
+            // const dbData = this.userRepository.find({
+            //     select: ['id', 'username', 'email'],
+            //     where: {
+            //         username: In(records.map((rec) => rec['username']))
+            //     }
+            // });
             // iterate csv records data and check row
+            const { start, end } = bench();
+            start();
             for (let i = 0; i < records.length; i++) {
                 const row = records[i];
                 const user: User = Object.assign(new User(), {
@@ -135,11 +146,13 @@ class AdminUserApiController {
                 }
             }
             if (msgObj.messages.length > 0) {
+                end();
                 msgObj.status = 400;
                 await queryRunner.rollbackTransaction();
                 console.log(msgObj.messages);
                 return res.status(msgObj.status ?? 500).json({ messages: msgObj.messages, status: msgObj.status });
             } else {
+                end();
                 await queryRunner.commitTransaction();
                 return res.status(200).json({ message: 'Import csv file successfully!', status: 200, data: records });
             }
@@ -150,8 +163,27 @@ class AdminUserApiController {
         }
     }
     async exportCsv(req: Request, res: Response) {
-        
-        null;
+        const { start, end } = bench();
+        start();
+        const userList: User[] = await AppDataSource.createEntityManager().find<User>(User, { where: { id: LessThan(100100) } });
+        const filename = `${dayjs(Date.now()).format('DD-MM-YYYY-HH-mm-ss')}-users.csv`;
+        // const writableStream = await fs.createWriteStream(filename);
+        const columns = Object.keys(userList[0]);
+        const stringifier = stringify(userList, { header: true, columns: columns, quoted: true }, (err, data) => {
+            if (err) {
+                console.log(err);
+            }
+            console.log(data);
+            res.setHeader('Content-disposition', 'attachment; filename=' + filename);
+            res.setHeader('Content-type', 'text/csv');
+            res.send(data);
+        });
+        // userList.forEach((user) => {
+        //     stringifier.write(user);
+        // });
+
+
+        end();
     }
     //for routing control purposes - END
 
@@ -218,37 +250,37 @@ class AdminUserApiController {
         let result = {
             message: message,
             isValid: isValid,
-            data: null
+            datas: null
         };
-        let findUser: User = null;
+        let findUsers: User[] = null;
         if (!queryRunner) {
             builder = this.userRepository.createQueryBuilder('user').where('');
         }
         if (user.username) {
             if (!queryRunner) {
                 builder.orWhere('user.username = :username', { username: `${user.username}` });
-                findUser = await builder.getOne();
+                findUsers = await builder.getMany();
             } else {
-                findUser = await queryRunner.manager.findOneBy(User, { username: user.username });
+                findUsers = await queryRunner.manager.findBy(User, { username: user.username });
             }
-            if (findUser) {
-                result = Object.assign({}, { message: 'Username is already exist!', isValid: false, data: findUser });
+            if (findUsers) {
+                result = Object.assign({}, { message: 'Username is already exist!', isValid: false, datas: findUsers });
                 return result;
             }
         }
         if (user.email) {
             if (!queryRunner) {
                 builder.orWhere('user.email = :email', { email: `${user.email}` });
-                findUser = await builder.getOne();
+                findUsers = await builder.getMany();
             } else {
-                findUser = await queryRunner.manager.findOneBy(User, { email: user.email });
+                findUsers = await queryRunner.manager.findBy(User, { email: user.email });
             }
-            if (findUser) {
-                result = Object.assign({}, { message: 'Email is already exist!', isValid: false, data: findUser });
+            if (findUsers) {
+                result = Object.assign({}, { message: 'Email is already exist!', isValid: false, datas: findUsers });
                 return result;
             }
         }
-        return { message: 'Email and username is unique!', isValid: true, data: findUser };
+        return { message: 'Email and username is unique!', isValid: true, data: findUsers };
     }
     async insertData(user: User, wantValidate: boolean, isPasswordHash: boolean, queryRunner: QueryRunner): Promise<CustomApiResult<User>> {
         const validateUser = await this.checkUsernameEmailUnique(user);
@@ -272,8 +304,8 @@ class AdminUserApiController {
     async updateData(user: User, wantValidate: boolean, queryRunner: QueryRunner): Promise<CustomApiResult<User>> {
         const validateUser = await this.checkUsernameEmailUnique(user);
         if (!validateUser.isValid) {
-            const idStr = validateUser.data['id'].toString();
-            if (user.id !== idStr) {
+            const arr: number[] = validateUser.datas.map((u) => u.id);
+            if (arr.includes(user.id)) {
                 return { message: validateUser.message, status: 400 };
             }
         }
@@ -289,8 +321,7 @@ class AdminUserApiController {
         }
         try {
             await queryRunner.manager.update(User, user.id, user);
-            const updatedUser: User | null = await queryRunner.manager.findOneBy(User, { id: user.id });
-            return { message: `Update user successfully!`, data: updatedUser, status: 200 };
+            return { message: `Update user successfully!`, data: user, status: 200 };
         } catch (error) {
             return { message: `Error when updating user!`, status: 500 };
         }
@@ -304,16 +335,32 @@ class AdminUserApiController {
         return { message: `User removed successfully`, status: 200 };
     }
     async searchData(query: Record<string, unknown>): Promise<CustomDataTableResult> {
-        const { draw, length, start, name, username, email, role, createdDateFrom, createdDateTo } = query;
-        const builder = this.userRepository.createQueryBuilder('user').where('');
-
+        const builder = await this.getSearchQueryBuilder(query, true);
         let data: string | User[];
         const recordsTotal: number = await this.userRepository.createQueryBuilder('user').select('user').getCount(); // get total records count
         const recordsFiltered: number = recordsTotal; // get filterd records count
 
         try {
-            // let isFromAndToDateEqual = false;
-            // check if queries exist then concat them with sql query
+            data = await builder.getMany(); //get data 
+        } catch (error) {
+            // if error then find all
+            console.log(error);
+            data = await this.userRepository.find();
+        }
+        const returnData = {
+            draw: query.draw as number,
+            recordsTotal: recordsTotal,
+            recordsFiltered: recordsFiltered,
+            data: data,
+        };
+        return returnData;
+    }
+    async getSearchQueryBuilder(query: Record<string, unknown>, hasAnyLimitOrOffset: boolean): Promise<SelectQueryBuilder<User>> {
+        const { length, start, name, username, email, role, createdDateFrom, createdDateTo } = query;
+        const builder = this.userRepository.createQueryBuilder('user').where('');
+        // let isFromAndToDateEqual = false;
+        // check if queries exist then concat them with sql query
+        if (hasAnyLimitOrOffset) {
             if (!_.isNil(length)) {
                 builder.limit(parseInt(length as string));
             }
@@ -321,39 +368,26 @@ class AdminUserApiController {
             if (!_.isNil(start) && !_.isNil(length)) {
                 builder.offset(parseInt(start as string));
             }
-            if (!_.isNil(createdDateFrom) && isValidDate(new Date(createdDateFrom as string))) {
-                builder.andWhere('Date(user.created_at) >= :fromDate', { fromDate: `${createdDateFrom}` });
-            }
-            if (!_.isNil(createdDateTo) && isValidDate(new Date(createdDateTo as string))) {
-                builder.andWhere('Date(user.created_at) <= :toDate', { toDate: `${createdDateTo}` });
-            }
-            if (!_.isNil(name)) {
-                builder.andWhere('user.name LIKE :name', { name: `%${name}%` });
-            }
-            if (!_.isNil(username)) {
-                builder.andWhere('user.username LIKE :username', { username: `%${username}%` });
-            }
-            if (!_.isNil(email)) {
-                builder.andWhere('user.email LIKE :email', { email: `%${email}%` });
-            }
-            if (!_.isNil(role)) {
-                builder.andWhere('user.role IN (:role)', { role: role });
-            }
-            data = await builder.getMany(); //get data 
-        } catch (error) {
-            // if error then find all
-            console.log(error);
-            data = await this.userRepository.find();
         }
-
-        const returnData = {
-            draw: draw as number,
-            recordsTotal: recordsTotal,
-            recordsFiltered: recordsFiltered,
-            data: data,
-        };
-
-        return returnData;
+        if (!_.isNil(createdDateFrom) && isValidDate(new Date(createdDateFrom as string))) {
+            builder.andWhere('Date(user.created_at) >= :fromDate', { fromDate: `${createdDateFrom}` });
+        }
+        if (!_.isNil(createdDateTo) && isValidDate(new Date(createdDateTo as string))) {
+            builder.andWhere('Date(user.created_at) <= :toDate', { toDate: `${createdDateTo}` });
+        }
+        if (!_.isNil(name)) {
+            builder.andWhere('user.name LIKE :name', { name: `%${name}%` });
+        }
+        if (!_.isNil(username)) {
+            builder.andWhere('user.username LIKE :username', { username: `%${username}%` });
+        }
+        if (!_.isNil(email)) {
+            builder.andWhere('user.email LIKE :email', { email: `%${email}%` });
+        }
+        if (!_.isNil(role)) {
+            builder.andWhere('user.role IN (:role)', { role: role });
+        }
+        return builder;
     }
     // for process data purposes, self-calling in the application - END
 
