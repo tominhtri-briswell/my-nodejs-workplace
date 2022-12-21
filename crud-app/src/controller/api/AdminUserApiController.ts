@@ -140,6 +140,10 @@ class AdminUserApiController {
                         if (row['deleted'] === 'y') {
                             deleteArr.push(findUser); // push to map to delete later
                         } else {
+                            const result: CustomValidateResult<User> = this.checkUsernameEmailUnique(findUser, dbData);
+                            if(result.isValid === false) {
+                                
+                            }
                             updateArr.push(user); // push to map to update later
                         }
                     } else {
