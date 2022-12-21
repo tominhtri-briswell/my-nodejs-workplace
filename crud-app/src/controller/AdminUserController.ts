@@ -33,7 +33,7 @@ class AdminUserController {
             name, username, password, email, role
         });
         try {
-            const result: CustomApiResult<User> = await AdminUserApiController.insertData(user, false, true, queryRunner);
+            const result: CustomApiResult<User> = await AdminUserApiController.insertData(user, null, false, true, queryRunner);
             if (result.status === 400 || result.status === 500) {
                 await queryRunner.rollbackTransaction();
                 req.flash('message', result.message ?? 'Error when create user!');
@@ -72,7 +72,7 @@ class AdminUserController {
         const user: User = Object.assign(new User(), { id, name, username, email, role });
 
         try {
-            const result: CustomApiResult<User> = await AdminUserApiController.updateData(user, false, queryRunner);
+            const result: CustomApiResult<User> = await AdminUserApiController.updateData(user, null, false, queryRunner);
             if (result.status === 404) {
                 req.flash('message', result.message ?? `Can't find user!`);
                 res.redirect('/admin/users/list');
@@ -101,7 +101,7 @@ class AdminUserController {
         const { id, password } = req.body;
         const user: User = Object.assign(new User(), { id, password });
         try {
-            const result: CustomApiResult<User> = await AdminUserApiController.updateData(user, false, queryRunner);
+            const result: CustomApiResult<User> = await AdminUserApiController.updateData(user, null, false, queryRunner);
             if (result.status === 404) {
                 req.flash('message', result.message ?? `Can't find user!`);
             }

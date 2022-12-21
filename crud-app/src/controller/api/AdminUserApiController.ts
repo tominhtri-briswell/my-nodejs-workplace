@@ -2,18 +2,15 @@ import { Request, Response } from 'express';
 import _ from 'lodash';
 import * as fs from 'fs';
 import * as csv from 'csv-parse';
-import v from 'validator';
 import { AppDataSource } from '../../DataSource';
 import { User } from '../../entity/User';
 import { CustomApiResult, CustomDataTableResult, CustomValidateResult } from '../../type/MyCustomType';
 import { hashPassword } from '../../utils/BcryptUtils';
 import { bench, getRandomPassword, isValidDate, _1mb } from '../../utils/MyUtils';
-import { Entity, In, InsertResult, LessThan, QueryRunner, SelectQueryBuilder } from 'typeorm';
+import { InsertResult, QueryRunner, SelectQueryBuilder } from 'typeorm';
 import { validate, ValidationError } from 'class-validator';
-import { generate } from 'csv-generate';
 import { stringify } from 'csv-stringify';
 import dayjs from 'dayjs';
-import path from 'path';
 class AdminUserApiController {
     private userRepository = AppDataSource.getRepository(User);
 
@@ -35,6 +32,8 @@ class AdminUserApiController {
         return res.status(result.status).json(result);
     }
     async search(req: Request, res: Response) {
+        // save req.query to session for export csv based on search query
+        req.session.searchQuery = req.query;
         return res.status(200).json(await this.searchData(req.query));
     }
     async getOne(req: Request, res: Response) {
@@ -49,7 +48,7 @@ class AdminUserApiController {
         const user: User = Object.assign(new User(), {
             name, username, password, email, role
         });
-        const result = await this.insertData(user, false, true, queryRunner);
+        const result = await this.insertData(user, null, false, true, queryRunner);
         return res.status(200).json(result);
     }
     async update(req: Request, res: Response) {
@@ -61,7 +60,7 @@ class AdminUserApiController {
         const user: User = Object.assign(new User(), {
             id, name, username, password, email, role
         });
-        const result = await this.updateData(user, false, queryRunner);
+        const result = await this.updateData(user, null, false, queryRunner);
         return res.status(result.status).json(result);
     }
     async remove(req: Request, res: Response) {
@@ -88,68 +87,97 @@ class AdminUserApiController {
                 columns: true, // gán header cho từng column trong row 
             });
             const records: unknown[] = await this.readCsvData(req.file.path, parser);
-            // const dbData = this.userRepository.find({
-            //     select: ['id', 'username', 'email'],
-            //     where: {
-            //         username: In(records.map((rec) => rec['username']))
-            //     }
-            // });
+            const idRecords = records.filter((record) => record['id'] !== '').map((record) => record['id']);
+            const usernameRecords = records.filter((record) => record['username'] !== '').map((record) => record['username']);
+            const nameRecords = records.filter((record) => record['name'] !== '').map((record) => record['name']);
+            const deleteArr = [];
+            const insertArr = [];
+            const updateArr = [];
+            // query data from db first then pass it around to prevent multiple query to db
+            const builder = this.userRepository.createQueryBuilder('user').select(['user.id', 'user.username', 'user.email']);
+            if (idRecords.length > 0) {
+                builder.orWhere('user.id IN (:ids)', { ids: idRecords });
+            }
+            if (usernameRecords.length > 0) {
+                builder.orWhere('user.username IN (:usernames)', { usernames: usernameRecords });
+            }
+            if (nameRecords.length > 0) {
+                builder.orWhere('user.name IN (:names)', { names: nameRecords });
+            }
+            const dbData = await builder.getMany();
             // iterate csv records data and check row
             const { start, end } = bench();
             start();
-            for (let i = 0; i < records.length; i++) {
-                const row = records[i];
+            await Promise.all(records.map(async (record, i) => {
+                const row = record;
                 const user: User = Object.assign(new User(), {
-                    id: row['id'] === '' ? null : row['id'],
+                    id: row['id'] === '' ? null : _.isString(row['id']) ? parseInt(row['id']) : row['id'],
                     name: row['name'] === '' ? null : row['name'],
                     username: row['username'] === '' ? null : row['username'],
                     email: row['email'] === '' ? null : row['email'],
-                    role: row['role'],
+                    role: _.isString(row['role']) ? parseInt(row['role']) : row['role'],
                 });
                 // validate entity User using 'class-validator'
                 const errors: ValidationError[] = await validate(user);
                 if (errors.length > 0) {
                     const errMsgStr = errors.map((error) => Object.values(error.constraints)).join(', ');
                     msgObj.messages.push(`Row ${i + 1} : ${errMsgStr}`);
-                    continue;
+                    return;
                 }
+                console.log('Reading csv row: ', i);
                 // + Trường hợp id rỗng => thêm mới user
                 if (_.isNil(row['id']) || row['id'] === '') {
                     if (row['deleted'] === 'y') {
                         // deleted="y" và colum id không có nhập thì không làm gì hết, ngược lại sẽ xóa row theo id tương ứng dưới DB trong bảng user
-                        continue;
+                        return;
                     }
                     user.password = getRandomPassword();
-                    const result = await this.insertData(user, true, false, queryRunner);
-                    if (result.status === 500) {
-                        msgObj.messages.push(`Row ${i + 1} : ${result.message}`);
-                    }
-                    if (result.status === 400) {
-                        msgObj.messages.push(`Row ${i + 1} : ${result.message}`);
-                    }
+                    insertArr.push(user); // push to map to insert later
                 } else {
                     // Trường hợp id có trong db (chứ ko phải trong transaction) => chỉnh sửa user nếu deleted != 'y'
-                    const findUser = await this.userRepository.findOneBy({ id: user.id });
+                    const findUser = _.find(dbData, { id: user.id });
                     if (findUser) {
                         if (row['deleted'] === 'y') {
-                            await queryRunner.manager.remove<User>(findUser);
+                            deleteArr.push(findUser); // push to map to delete later
                         } else {
-                            const result = await this.updateData(user, true, queryRunner);
-                            if (result.status === 404 || result.status === 400 || result.status === 500) {
-                                msgObj.messages.push(`Row ${i + 1} : ${result.message}`);
-                            }
+                            updateArr.push(user); // push to map to update later
                         }
                     } else {
                         // Trường hợp id không có trong db => hiển thị lỗi "id not exist"
                         msgObj.messages.push(`Row ${i + 1} : Id not exist`);
                     }
                 }
-            }
+            }));
+            await Promise.all(deleteArr.map(async (user) => {
+                await queryRunner.manager.remove<User>(user);
+                // delete user from dbData
+                dbData.splice(dbData.indexOf(user), 1);
+            }));
+            await Promise.all(updateArr.map(async (user, i) => {
+                const result: CustomApiResult<User> = await this.updateData(user, dbData, true, queryRunner);
+                // update dbData with new data
+                if (result.data) {
+                    dbData.splice(dbData.indexOf(result.data as User), 1, result.data as User);
+                }
+                if (result.status !== 200) {
+                    msgObj.messages.push(`Row ${i + 1} : ${result.message}`);
+                }
+            }));
+            await Promise.all(insertArr.map(async (user, i) => {
+                const result: CustomApiResult<User> = await this.insertData(user, dbData, true, false, queryRunner);
+                // add new dbData with new data
+                if (result.data) {
+                    dbData.push(result.data as User);
+                }
+                if (result.status !== 200) {
+                    msgObj.messages.push(`Row ${i + 1} : ${result.message}`);
+                }
+            }));
+            // check if msgObj is not empty => meaning has errors => return 500
             if (msgObj.messages.length > 0) {
                 end();
                 msgObj.status = 400;
                 await queryRunner.rollbackTransaction();
-                console.log(msgObj.messages);
                 return res.status(msgObj.status ?? 500).json({ messages: msgObj.messages, status: msgObj.status });
             } else {
                 end();
@@ -164,26 +192,39 @@ class AdminUserApiController {
     }
     async exportCsv(req: Request, res: Response) {
         const { start, end } = bench();
-        start();
-        const userList: User[] = await AppDataSource.createEntityManager().find<User>(User, { where: { id: LessThan(100100) } });
-        const filename = `${dayjs(Date.now()).format('DD-MM-YYYY-HH-mm-ss')}-users.csv`;
-        // const writableStream = await fs.createWriteStream(filename);
-        const columns = Object.keys(userList[0]);
-        const stringifier = stringify(userList, { header: true, columns: columns, quoted: true }, (err, data) => {
-            if (err) {
-                console.log(err);
-            }
-            console.log(data);
-            res.setHeader('Content-disposition', 'attachment; filename=' + filename);
-            res.setHeader('Content-type', 'text/csv');
-            res.send(data);
+        const searchQuery = req.session.searchQuery;
+        let builder: SelectQueryBuilder<User>;
+        let userList: unknown[];
+        if (searchQuery) {
+            builder = await this.getSearchQueryBuilder(searchQuery, false); // set false to turn off offset,limit search criteria
+            userList = await builder.getMany();
+        } else {
+            userList = await this.userRepository.find();
+        }
+        start(); // begin count time start
+        // format date, transform role number to string (Ex: '1' => 'User')
+        userList.map((user) => {
+            user['created_at'] = dayjs(user['created_at']).format('YYYY/MM/DD');
+            user['updated_at'] = dayjs(user['updated_at']).format('YYYY/MM/DD');
+            user['role'] = user['role'] === 1 ? 'user' : (user['role'] === 2 ? 'admin' : 'manager');
         });
-        // userList.forEach((user) => {
-        //     stringifier.write(user);
-        // });
-
-
-        end();
+        const filename = `${dayjs(Date.now()).format('DD-MM-YYYY-HH-mm-ss')}-users.csv`;
+        const columns = Object.keys(userList[0]);
+        const columns_string = columns.toString().replace(/,/g, ',');
+        stringify(userList, {
+            // header: true,
+            columns: columns,
+            delimiter: ',',
+            quoted: true,
+            quoted_empty: true,
+        }, function (err, data) {
+            if (err) {
+                res.status(500).json({ message: 'Internal Server Error\nFailed to export csv', status: 500 });
+            }
+            data = columns_string + '\n' + data;
+            end(); // end count time and log to console
+            res.status(200).json({ data: data, status: 200, message: `Export to CSV success!, \nTotal records: ${userList.length}`, filename: filename });
+        });
     }
     //for routing control purposes - END
 
@@ -243,7 +284,7 @@ class AdminUserApiController {
         }
         return { message: `Found user with id ${id}`, data: findUser, status: 200 };
     }
-    async checkUsernameEmailUnique(user: User, queryRunner?: QueryRunner): Promise<CustomValidateResult<User>> {
+    async checkUsernameEmailUnique(user: User, dbData?: User[]): Promise<CustomValidateResult<User>> {
         let builder: SelectQueryBuilder<User>;
         let message: string;
         let isValid: boolean;
@@ -253,37 +294,45 @@ class AdminUserApiController {
             datas: null
         };
         let findUsers: User[] = null;
-        if (!queryRunner) {
+        if (!dbData) {
             builder = this.userRepository.createQueryBuilder('user').where('');
         }
         if (user.username) {
-            if (!queryRunner) {
+            if (!dbData) {
                 builder.orWhere('user.username = :username', { username: `${user.username}` });
                 findUsers = await builder.getMany();
             } else {
-                findUsers = await queryRunner.manager.findBy(User, { username: user.username });
+                if (user.id) {
+                    findUsers = dbData.filter((data) => data.username === user.username && data.id !== user.id);
+                } else {
+                    findUsers = dbData.filter((data) => data.username === user.username);
+                }
             }
-            if (findUsers) {
+            if (findUsers.length > 0) {
                 result = Object.assign({}, { message: 'Username is already exist!', isValid: false, datas: findUsers });
                 return result;
             }
         }
         if (user.email) {
-            if (!queryRunner) {
+            if (!dbData) {
                 builder.orWhere('user.email = :email', { email: `${user.email}` });
                 findUsers = await builder.getMany();
             } else {
-                findUsers = await queryRunner.manager.findBy(User, { email: user.email });
+                if (user.id) {
+                    findUsers = dbData.filter((data) => data.email === user.email && data.id !== user.id);
+                } else {
+                    findUsers = dbData.filter((data) => data.email === user.email);
+                }
             }
-            if (findUsers) {
+            if (findUsers.length > 0) {
                 result = Object.assign({}, { message: 'Email is already exist!', isValid: false, datas: findUsers });
                 return result;
             }
         }
         return { message: 'Email and username is unique!', isValid: true, data: findUsers };
     }
-    async insertData(user: User, wantValidate: boolean, isPasswordHash: boolean, queryRunner: QueryRunner): Promise<CustomApiResult<User>> {
-        const validateUser = await this.checkUsernameEmailUnique(user);
+    async insertData(user: User, dbData: User[] | null, wantValidate: boolean, isPasswordHash: boolean, queryRunner: QueryRunner): Promise<CustomApiResult<User>> {
+        const validateUser = await this.checkUsernameEmailUnique(user, dbData);
         if (!validateUser.isValid) {
             return { message: validateUser.message, status: 400 };
         }
@@ -294,18 +343,21 @@ class AdminUserApiController {
             user.password = hashed;
         }
         try {
-            const insertRes: InsertResult = await queryRunner.manager.insert(User, user);
-            const newUser: User | null = await queryRunner.manager.findOneBy(User, { id: insertRes.identifiers[0].id });
-            return { message: 'User created successfully!', data: newUser, status: 200 };
+            const insertedUser: User = await queryRunner.manager.save(User, user);
+            if (dbData) {
+                dbData.push(insertedUser);
+            }
+            // const newUser: User | null = await queryRunner.manager.findOneBy(User, { id: insertRes.identifiers[0].id });
+            return { message: 'User created successfully!', data: insertedUser, status: 200 };
         } catch (error) {
             return { message: 'Error when inserting user!', status: 500 };
         }
     }
-    async updateData(user: User, wantValidate: boolean, queryRunner: QueryRunner): Promise<CustomApiResult<User>> {
-        const validateUser = await this.checkUsernameEmailUnique(user);
+    async updateData(user: User, dbData: User[] | null, wantValidate: boolean, queryRunner: QueryRunner): Promise<CustomApiResult<User>> {
+        const validateUser = await this.checkUsernameEmailUnique(user, dbData);
         if (!validateUser.isValid) {
             const arr: number[] = validateUser.datas.map((u) => u.id);
-            if (arr.includes(user.id)) {
+            if (!arr.includes(user.id)) {
                 return { message: validateUser.message, status: 400 };
             }
         }
@@ -320,8 +372,11 @@ class AdminUserApiController {
             return { message: `User ${user.id} not found`, status: 404 };
         }
         try {
-            await queryRunner.manager.update(User, user.id, user);
-            return { message: `Update user successfully!`, data: user, status: 200 };
+            const updatedUser = await queryRunner.manager.save(User, user);
+            if (dbData) {
+                dbData.push(updatedUser);
+            }
+            return { message: `Update user successfully!`, data: updatedUser, status: 200 };
         } catch (error) {
             return { message: `Error when updating user!`, status: 500 };
         }
@@ -339,7 +394,6 @@ class AdminUserApiController {
         let data: string | User[];
         const recordsTotal: number = await this.userRepository.createQueryBuilder('user').select('user').getCount(); // get total records count
         const recordsFiltered: number = recordsTotal; // get filterd records count
-
         try {
             data = await builder.getMany(); //get data 
         } catch (error) {

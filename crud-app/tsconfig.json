@@ -33,6 +33,12 @@
     "strict": false, /* Enable all strict type-checking options. */
     "strictPropertyInitialization": false,
     "skipLibCheck": true, /* Skip type checking all .d.ts files. */
+    "lib": [
+      "es5",
+      "es6",
+      "dom",
+      "dom.iterable"
+    ]
   },
   "typeAcquisition": {
     "include": [

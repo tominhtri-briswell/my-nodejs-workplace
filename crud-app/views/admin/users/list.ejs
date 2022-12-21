@@ -64,6 +64,7 @@
                         </div>
                         <div class="col-md-4">
                             <button class="btn btn-outline-secondary" id="exportCsvBtn">Export CSV</button>
+                            <a hidden id="downloadTag"></a>
                         </div>
                     </div>
 
@@ -339,7 +340,7 @@
                     .val('')
                     .prop('checked', false)
                     .prop('selected', false);
-                usersTableElement.DataTable().ajax.reload()
+                // usersTableElement.DataTable().ajax.reload()
             })
 
             // when search form is submit then send ajax GET then repopulate returned data to dataTable
@@ -442,6 +443,33 @@
                 } else {
                     alert('Please select a valid .csv file and no bigger than 2mb!')
                 }
+            })
+
+            $(document).on('click', '#exportCsvBtn', function() {
+                $.ajax({
+                    method: 'POST',
+                    url: '/api/admin/users/csv/export',
+                    cache: false,
+                    success: function(res) {
+                        let blob = new Blob([res.data], {
+                            type: 'text/csv;',
+                        });
+                        let url = window.URL || window.webkitURL;
+                        let link = url.createObjectURL(blob)
+                        let a = document.createElement('a')
+                        a.download = res.filename
+                        a.href = link
+                        document.body.appendChild(a)
+                        a.click();
+                        a.remove();
+                        console.log(res.message);
+                        openErrorModalWithMsg('errorModal', 'errorModalMessage', 'errorModalOkBtn', res.status || 200, res.message, null, false)
+                    },
+                    error: function(req, stat, err) {
+                        console.log(stat, err);
+                        openErrorModalWithMsg('errorModal', 'errorModalMessage', 'errorModalOkBtn', req.responseJSON.status, req.responseJSON.message, null, false)
+                    }
+                })
             })
         })
     </script>

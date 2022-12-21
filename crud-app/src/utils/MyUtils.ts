@@ -24,7 +24,7 @@ const getRandomPassword = () => {
 
 const bench = () => {
     const iterations = 100000;
-    let startTime;
+    let startTime: number;
     const start = () => {
         startTime = new Date().getTime();
     };
