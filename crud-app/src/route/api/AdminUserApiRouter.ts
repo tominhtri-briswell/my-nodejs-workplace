@@ -1,5 +1,6 @@
 import express from 'express';
 import AdminUserApiController from '../../controller/api/AdminUserApiController';
+import { allowParams, defaultAllow } from '../../middlewares/checkPermission';
 import { uploadFile } from '../../middlewares/uploadCsv';
 const adminUserApiRouter = express.Router();
 
@@ -7,11 +8,11 @@ const adminUserApiRouter = express.Router();
 adminUserApiRouter.get('/', AdminUserApiController.getAll);
 adminUserApiRouter.get('/search', AdminUserApiController.search);
 adminUserApiRouter.get('/:id', AdminUserApiController.getOne);
-adminUserApiRouter.post('/', AdminUserApiController.save);
-adminUserApiRouter.put('/:id', AdminUserApiController.update);
-adminUserApiRouter.delete('/:id', AdminUserApiController.remove);
-adminUserApiRouter.post('/csv/import', uploadFile.single('file'), AdminUserApiController.importCsv);
-adminUserApiRouter.get('/csv/export', AdminUserApiController.exportCsv);
-adminUserApiRouter.post('/csv/export', AdminUserApiController.exportCsv);
+adminUserApiRouter.post('/', defaultAllow, AdminUserApiController.save);
+adminUserApiRouter.put('/:id', allowParams, AdminUserApiController.update);
+adminUserApiRouter.delete('/:id', allowParams, AdminUserApiController.remove);
+adminUserApiRouter.post('/csv/import', defaultAllow, uploadFile.single('file'), AdminUserApiController.importCsv);
+adminUserApiRouter.get('/csv/export', defaultAllow, AdminUserApiController.exportCsv);
+adminUserApiRouter.post('/csv/export', defaultAllow, AdminUserApiController.exportCsv);
 
 export default adminUserApiRouter;

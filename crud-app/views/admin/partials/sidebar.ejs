@@ -10,7 +10,7 @@
                 <i class="fas fa-chart-area fa-fw me-3"></i><span>User List</span>
             </a>
             <!-- 3 -->
-            <a href="/admin/users/addPage" class="list-group-item list-group-item-action py-2 ripple <%= activeTab === 3? 'active':'' %>  "><i class="fas fa-lock fa-fw me-3"></i><span>Add user</span></a>
+            <a href="/admin/users/addPage" class="<%= authority === 1? 'disabled':'' %>  list-group-item list-group-item-action py-2 ripple <%= activeTab === 3? 'active':'' %>  "><i class="fas fa-lock fa-fw me-3"></i><span>Add user</span></a>
         </div>
     </div>
 </nav>

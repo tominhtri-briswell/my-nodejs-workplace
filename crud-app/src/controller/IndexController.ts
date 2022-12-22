@@ -39,11 +39,13 @@ class IndexController {
             if (isPassMatch) {
                 req.session.user = findUser;
                 req.session.loggedin = true;
+                req.session.authority = findUser.role;
+                req.session.userId = findUser.id;
                 isLoginValid = true;
             }
         }
         if (isLoginValid) {
-            res.redirect(returnUrl || '/admin');
+            res.redirect(redirect ? returnUrl : '/');
         } else {
             req.flash('message', 'Username or password is incorrect');
             res.redirect('/login');
@@ -52,6 +54,7 @@ class IndexController {
 
     async logout(req: Request, res: Response) {
         req.session.user = null;
+        req.session.authority = null;
         req.session.loggedin = false;
         res.redirect('/');
     }

@@ -23,7 +23,9 @@ declare module 'express-session' {
         user: User;
         username: string;
         loggedin: boolean;
-        searchQuery: Record<string, unknown>
+        authority: number;
+        userId: number;
+        searchQuery: Record<string, unknown>;
     }
 }
 dotenv.config();

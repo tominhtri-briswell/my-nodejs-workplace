@@ -180,11 +180,13 @@
         modal.show()
     </script>
     <% } %>
-
     <!-- jquery script -->
-    <script type="text/javascript">
+    <script>
         $(document).ready(function() {
             const usersTableElement = $('#usersTable')
+            const getUserRole = parseInt(document.querySelector('#userAuthority').dataset.authority);
+            const getUserId = document.querySelector('#user-id').dataset.userid
+            // alert(getUserRole)
             const table = usersTableElement.DataTable({
                 ordering: false,
                 searching: false,
@@ -290,10 +292,15 @@
                         data: null,
                         render: function(data, type, row, meta) {
                             const userId = data.id;
+                            console.log('typeof userID', typeof getUserId);
+                            console.log(getUserId);
+                            const isEditDisabled = getUserRole === 1 ? (Number(getUserId) === data.id ? '' : 'disabled') : ''
+                            // if authority is 1 (User) then disable edit button except for himself (id matches)
+                            const isDelDisabled = getUserRole === 1 ? 'disabled' : ''
                             return `
                             <div class="btn-group" role="group" aria-label="Basic example">
-                                <a href="/admin/users/edit/${userId}" class="btn btn-secondary">Edit</a>
-                                <a class="btn btn-danger" id="delUserBtn" data-user-id="${userId}">Del</a>
+                                <a href="/admin/users/edit/${userId}" class="btn btn-secondary ${isEditDisabled}">Edit</a>
+                                <button class="btn btn-danger ${isDelDisabled}"${isDelDisabled} id="delUserBtn" data-user-id="${userId}">Del</button>
                             </div>
                             `
                         }
@@ -317,19 +324,21 @@
             // if click del button then call ajax delete request
             $(document).on('click', '#delUserBtn', function() {
                 const userId = $(this).attr('data-user-id');
-                const check = confirm('Are you sure you want to delete this users?');
-                if (check) {
-                    $.ajax({
-                        type: 'DELETE',
-                        url: `/api/admin/users/${userId}`,
-                        success: function(res) {
-                            alert(res.message);
-                            location.reload();
-                        },
-                        error: function(response, status, error) {
-                            console.log(response, status, error);
-                        }
-                    });
+                if (getUserRole !== 1) {
+                    const check = confirm('Are you sure you want to delete this users?');
+                    if (check) {
+                        $.ajax({
+                            type: 'DELETE',
+                            url: `/api/admin/users/${userId}`,
+                            success: function(res) {
+                                alert(res.message);
+                                location.reload();
+                            },
+                            error: function(response, status, error) {
+                                console.log(response, status, error);
+                            }
+                        });
+                    }
                 }
             });
 

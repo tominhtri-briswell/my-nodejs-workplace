@@ -3,11 +3,13 @@ import dayjs from 'dayjs';
 import { User } from '../entity/User';
 import { AppDataSource } from '../DataSource';
 import _ from 'lodash';
-import AdminUserApiController from './api/AdminUserApiController';
 import { CustomApiResult } from '../type/MyCustomType';
+import UserService from '../service/user/UserService';
+import { ROLE } from '../utils/MyConst';
 
 class AdminUserController {
     private userRepository = AppDataSource.getRepository(User);
+    private userService = new UserService();
 
     constructor() {
         this.createNewUser = this.createNewUser.bind(this);
@@ -17,7 +19,6 @@ class AdminUserController {
         this.changePasswordPage = this.changePasswordPage.bind(this);
         this.update = this.update.bind(this);
     }
-
     async addPage(req: Request, res: Response) {
         const flashMessage = req.flash('message')[0];
         const dataBack = req.flash('dataBack')[0];
@@ -33,7 +34,7 @@ class AdminUserController {
             name, username, password, email, role
         });
         try {
-            const result: CustomApiResult<User> = await AdminUserApiController.insertData(user, null, false, true, queryRunner);
+            const result: CustomApiResult<User> = await this.userService.insertData(user, null, queryRunner, { wantValidate: true, isPasswordHash: true });
             if (result.status === 400 || result.status === 500) {
                 await queryRunner.rollbackTransaction();
                 req.flash('message', result.message ?? 'Error when create user!');
@@ -52,10 +53,9 @@ class AdminUserController {
             await queryRunner.release();
         }
     }
-
     async editPage(req: Request, res: Response) {
         const { id } = req.params;
-        const result: CustomApiResult<User> = await AdminUserApiController.getOneData(parseInt(id));
+        const result: CustomApiResult<User> = await this.userService.getOneData(parseInt(id));
         if (result.status === 200) {
             const flashMessage = req.flash('message')[0];
             res.render('admin/users/edit', { dataBack: {}, message: flashMessage, user: result.data });
@@ -71,8 +71,15 @@ class AdminUserController {
         const { id, name, username, email, role } = req.body;
         const user: User = Object.assign(new User(), { id, name, username, email, role });
 
+        // if role from req is not user, check if user is admin or manager if neither throw 403
+        if (role !== ROLE.USER + '') {
+            if (req.session.authority !== ROLE.ADMIN && req.session.authority !== ROLE.MANAGER) {
+                req.flash('message', 'You are not authorized to do this action!');
+                return res.redirect(`/admin/users/edit/${id.trim()}`);
+            }
+        }
         try {
-            const result: CustomApiResult<User> = await AdminUserApiController.updateData(user, null, false, queryRunner);
+            const result: CustomApiResult<User> = await this.userService.updateData(user, null, queryRunner, { wantValidate: true });
             if (result.status === 404) {
                 req.flash('message', result.message ?? `Can't find user!`);
                 res.redirect('/admin/users/list');
@@ -88,12 +95,11 @@ class AdminUserController {
             await queryRunner.release();
         }
     }
-
     async listPage(req: Request, res: Response) {
         const flashMessage = req.flash('message')[0];
+        const userRole = req.session?.user?.role;
         res.render('admin/users/list', { queryBack: {}, dayjs: dayjs, message: flashMessage });
     }
-
     async changePassword(req: Request, res: Response) {
         const queryRunner = AppDataSource.createQueryRunner();
         await queryRunner.connect();
@@ -101,7 +107,7 @@ class AdminUserController {
         const { id, password } = req.body;
         const user: User = Object.assign(new User(), { id, password });
         try {
-            const result: CustomApiResult<User> = await AdminUserApiController.updateData(user, null, false, queryRunner);
+            const result: CustomApiResult<User> = await this.userService.updateData(user, null, queryRunner, { wantValidate: true });
             if (result.status === 404) {
                 req.flash('message', result.message ?? `Can't find user!`);
             }

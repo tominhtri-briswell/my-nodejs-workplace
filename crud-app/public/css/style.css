@@ -12,3 +12,11 @@
     white-space: nowrap;
 }
 
+.inactiveLink {
+    pointer-events: none;
+    cursor: default;
+}
+
+.inactiveLink:hover {
+    border: 1px solid red !important;
+}
